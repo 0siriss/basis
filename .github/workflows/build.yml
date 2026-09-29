@@ -20,10 +20,18 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v5
-      - name: Unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace
-      - name: Assemble debug + release
-        run: ./gradlew assembleDebug assembleRelease lintDebug --stacktrace
+      - name: Build, unit tests, lint
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest assembleDebug assembleRelease lintDebug --continue 2>&1 | tee build.log
+      - name: Error digest
+        if: failure()
+        shell: bash
+        run: |
+          # Short summary at the end of the log (full log is long because of Gradle stack traces).
+          grep -nE "^e: |^\[ksp\].*error|error: |What went wrong|Execution failed|Caused by: " build.log | cut -c1-500 | grep -v "^\s*at " | head -120 || true
+          grep -A6 "What went wrong" build.log | head -80 || true
       - name: Upload APKs
         uses: actions/upload-artifact@v6
         with:
