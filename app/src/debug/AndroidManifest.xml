@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <!-- Debug builds only: lets CI drive recording via `adb shell am start ... --es cmd start`. -->
+        <!-- Debug builds only: lets CI drive recording via adb (am start with extra cmd=start). -->
         <activity
             android:name=".DebugCommandActivity"
             android:exported="true"

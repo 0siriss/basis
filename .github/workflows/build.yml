@@ -25,7 +25,7 @@ jobs:
       - name: Assemble debug + release
         run: ./gradlew assembleDebug assembleRelease lintDebug --stacktrace
       - name: Upload APKs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: basis-apk-${{ github.run_number }}
           path: |
@@ -33,7 +33,7 @@ jobs:
             app/build/outputs/apk/release/app-release.apk
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: reports-${{ github.run_number }}
           path: |
@@ -51,7 +51,7 @@ jobs:
         api: [34, 35, 36, 37]
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: basis-apk-${{ github.run_number }}
           path: app/build/outputs/apk
@@ -70,7 +70,7 @@ jobs:
           script: ./tools/ci/emulator-smoke.sh
       - name: Upload smoke logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: smoke-api${{ matrix.api }}-${{ github.run_number }}
           path: build/smoke/
