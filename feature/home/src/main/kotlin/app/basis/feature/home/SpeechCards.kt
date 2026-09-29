@@ -76,24 +76,10 @@ fun SpeechCards(vm: SpeechViewModel = hiltViewModel()) {
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Модели", style = MaterialTheme.typography.titleMedium)
+            Text("Модель VAD", style = MaterialTheme.typography.titleMedium)
             val spec = ModelCatalog.SILERO_VAD
-            Text("${spec.title} (${spec.totalBytes / 1024} КБ, ${spec.license})")
-            when (val s = vad) {
-                ModelState.Ready -> Text("Готова ✓")
-                ModelState.Missing -> Text("Не загружена")
-                is ModelState.Downloading -> {
-                    Text("Загрузка ${s.bytes / 1024} / ${s.total / 1024} КБ")
-                    LinearProgressIndicator(progress = { if (s.total > 0) s.bytes.toFloat() / s.total else 0f }, modifier = Modifier.fillMaxWidth())
-                }
-                is ModelState.Failed -> Text("Ошибка: ${s.message}", color = MaterialTheme.colorScheme.error)
-            }
-            if (vad != ModelState.Ready && vad !is ModelState.Downloading) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = vm::downloadVad) { Text("Скачать") }
-                    TextButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text("Импорт файла") }
-                }
-            }
+            Text(spec.title)
+            ModelRow(spec, vad, onDownload = vm::downloadVad, onImport = { picker.launch(arrayOf("*/*")) })
             Text("Источник: ${spec.source}. Файл проверяется по SHA-256.", style = MaterialTheme.typography.bodySmall)
         }
     }

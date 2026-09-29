@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,7 +64,7 @@ private val HM = DateTimeFormatter.ofPattern("HH:mm")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onOpenLogs: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onOpenLogs: () -> Unit, onOpenTranscripts: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
     val status by vm.status.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -101,6 +102,7 @@ fun HomeScreen(onOpenLogs: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
             TopAppBar(
                 title = { Text("Ежедневник") },
                 actions = {
+                    IconButton(onClick = onOpenTranscripts) { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Расшифровки") }
                     IconButton(onClick = onOpenLogs) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Логи") }
                 },
             )
@@ -165,6 +167,7 @@ fun HomeScreen(onOpenLogs: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
             if (settings.enabled) TextButton(onClick = vm::stop) { Text("Выключить запись полностью") }
 
             SpeechCards()
+            AsrCard()
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

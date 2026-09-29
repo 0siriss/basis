@@ -34,4 +34,5 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:datastore"))
     implementation(project(":audio:capture"))
+    implementation(project(":pipeline"))
 }

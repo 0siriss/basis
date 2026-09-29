@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.basis.feature.home.HomeScreen
 import app.basis.feature.logs.LogsScreen
+import app.basis.feature.transcripts.TranscriptsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -26,7 +27,8 @@ class MainActivity : ComponentActivity() {
             BasisTheme {
                 val nav = rememberNavController()
                 NavHost(nav, startDestination = "home") {
-                    composable("home") { HomeScreen(onOpenLogs = { nav.navigate("logs") }) }
+                    composable("home") { HomeScreen(onOpenLogs = { nav.navigate("logs") }, onOpenTranscripts = { nav.navigate("transcripts") }) }
+                    composable("transcripts") { TranscriptsScreen(onBack = { nav.popBackStack() }) }
                     composable("logs") { LogsScreen(onBack = { nav.popBackStack() }) }
                 }
             }

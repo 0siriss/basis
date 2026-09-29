@@ -46,6 +46,22 @@ adb shell am start -W -n "$PKG/app.basis.MainActivity" >/dev/null; sleep 10; svc
 step "stop"
 cmd stop; sleep 5; svc | tee -a "$OUT/steps.txt"
 
+step "ASR end-to-end: GigaAM v3 download + example.wav through the encrypted buffer"
+wait_log() { # pattern timeout_s
+  for _ in $(seq 1 "$2"); do adb logcat -d | grep -q "$1" && return 0; sleep 1; done; return 1; }
+cmd download:gigaam-v3-rnnt
+if wait_log "GigaAM v3 (русский): готова" 300; then echo "model ready" | tee -a "$OUT/steps.txt"; else echo "model NOT ready" | tee -a "$OUT/steps.txt"; fi
+if [ -f build/asr/example.wav ]; then
+  # Apps can't read /data/local/tmp (SELinux): copy into the app's own files dir via run-as.
+  adb exec-in run-as $PKG sh -c 'cat > files/example.wav' < build/asr/example.wav
+  cmd "inject-wav:/data/user/0/$PKG/files/example.wav"; sleep 2
+  cmd transcribe
+  if wait_log "Basis/ASR.*распознано" 240; then echo "transcribed" | tee -a "$OUT/steps.txt"; else echo "NOT transcribed" | tee -a "$OUT/steps.txt"; fi
+  cmd dump-transcripts; sleep 2
+  echo "audio files left in app storage:" | tee -a "$OUT/steps.txt"
+  adb shell run-as $PKG find . -name '*.bseg*' -o -name '*.wav' -o -name '*.pcm' 2>&1 | tee -a "$OUT/steps.txt"
+fi
+
 # logcat filterspecs don't support tag wildcards: dump everything, grep ours.
 adb logcat -d -v time > "$OUT/logcat-all.txt"
 grep -E "Basis/|AndroidRuntime|ForegroundService|basis.diary" "$OUT/logcat-all.txt" > "$OUT/logcat.txt"

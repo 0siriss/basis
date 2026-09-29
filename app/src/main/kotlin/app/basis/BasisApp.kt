@@ -6,13 +6,25 @@ import android.app.usage.UsageStatsManager
 import android.os.Build
 import android.os.PowerManager
 import app.basis.core.common.AppLog
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
+import app.basis.pipeline.TranscriptionScheduler
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @HiltAndroidApp
-class BasisApp : Application() {
+class BasisApp : Application(), Configuration.Provider {
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var scheduler: TranscriptionScheduler
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
+
     override fun onCreate() {
         super.onCreate()
         AppLog.init(this)
@@ -24,6 +36,7 @@ class BasisApp : Application() {
         logStartup()
         logPreviousExits()
         app.basis.audio.capture.BootDiagnostics.check(this)
+        MainScope().launch { scheduler.scheduleFromSettings() }
     }
 
     private fun logStartup() {

@@ -23,4 +23,5 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     implementation(project(":core:common"))
+    implementation(libs.commons.compress)
 }

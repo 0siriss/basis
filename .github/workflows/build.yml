@@ -59,7 +59,7 @@ jobs:
   emulator:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +70,12 @@ jobs:
         with:
           name: basis-apk-${{ github.run_number }}
           path: app/build/outputs/apk
+      - name: Get Russian test recording (from the GigaAM archive)
+        run: |
+          mkdir -p build/asr
+          curl -fsSL --retry 3 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-transducer-giga-am-v3-russian-2025-12-16.tar.bz2 \
+            | tar -xjO --wildcards '*/test_wavs/example.wav' > build/asr/example.wav
+          ls -la build/asr
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
