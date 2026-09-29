@@ -61,7 +61,7 @@
 |---|---|---|
 | AGP | 9.4.0 | Gradle ≥ 9.6, JDK 17+, max API 37, встроенный Kotlin |
 | Kotlin | 2.4.20 | KSP 2.3.x |
-| compileSdk / targetSdk | 36 (Android 16) | 37 — поднимем, когда стабилизируется в CI-образе |
+| compileSdk / targetSdk | 37 (Android 17) | AndroidX 2026.09 требует compileSdk ≥ 37 |
 | minSdk | 31 | по ТЗ |
 | NDK | 28.2.13676358 | по умолчанию для AGP 9.4 |
 | sherpa-onnx | 1.13.8 (10.09.2026) | готовый AAR из GitHub Releases |

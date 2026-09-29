@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "app.basis.core.datastore"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 31
     }

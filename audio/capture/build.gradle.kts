@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "app.basis.audio.capture"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 31
     }

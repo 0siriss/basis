@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "app.basis"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.basis.diary"
         minSdk = 31
-        targetSdk = 36
+        targetSdk = 37
         // CI run number → monotonically increasing, so every artifact installs over the previous one.
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "0.1.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}-stage1"

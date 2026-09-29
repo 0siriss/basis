@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "app.basis.feature.logs"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 31
     }
