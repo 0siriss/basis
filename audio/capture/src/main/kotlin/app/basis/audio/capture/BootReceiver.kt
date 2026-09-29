@@ -21,6 +21,7 @@ class BootReceiver : BroadcastReceiver() {
     @Inject lateinit var controller: RecordingController
 
     override fun onReceive(context: Context, intent: Intent) {
+        BootDiagnostics.markReceived(context, intent.action)
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {

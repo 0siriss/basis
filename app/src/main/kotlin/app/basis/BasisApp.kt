@@ -23,6 +23,7 @@ class BasisApp : Application() {
         }
         logStartup()
         logPreviousExits()
+        app.basis.audio.capture.BootDiagnostics.check(this)
     }
 
     private fun logStartup() {
