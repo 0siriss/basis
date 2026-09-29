@@ -46,6 +46,7 @@ cmd stop; sleep 5; svc | tee -a "$OUT/steps.txt"
 adb logcat -d -v time 'Basis/*:V' 'ActivityManager:W' 'AndroidRuntime:E' '*:S' > "$OUT/logcat.txt"
 adb shell dumpsys notification --noredact | grep -A3 "$PKG" > "$OUT/notifications.txt" || true
 
+SUMMARY="$OUT/summary.md"
 {
   echo "### Emulator API $API"
   echo '```'
@@ -53,7 +54,9 @@ adb shell dumpsys notification --noredact | grep -A3 "$PKG" > "$OUT/notification
   echo '--- Basis log (grep) ---'
   grep -E "Basis/" "$OUT/logcat.txt" | cut -c1-220 | tail -80
   echo '```'
-} >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+} > "$SUMMARY"
+cat "$SUMMARY"
+[ -n "${GITHUB_STEP_SUMMARY:-}" ] && cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
 
 # Fail on crashes only; behavioural findings are reported, not asserted, at this stage.
 if grep -q "FATAL EXCEPTION" "$OUT/logcat.txt"; then echo "crash detected"; exit 1; fi
