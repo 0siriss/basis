@@ -47,20 +47,29 @@ class RecordingPrefs @Inject constructor(@ApplicationContext private val context
 
     suspend fun current(): RecordingSettings = settings.first()
 
-    suspend fun setEnabled(enabled: Boolean) = context.recordingStore.edit {
-        it[Keys.enabled] = enabled
-        if (!enabled) {
-            it[Keys.paused] = false
-            it[Keys.privateUntil] = 0L
+    // Setters return Unit so DataStore types don't leak into modules that don't depend on DataStore.
+    suspend fun setEnabled(enabled: Boolean) {
+        context.recordingStore.edit {
+            it[Keys.enabled] = enabled
+            if (!enabled) {
+                it[Keys.paused] = false
+                it[Keys.privateUntil] = 0L
+            }
         }
     }
 
-    suspend fun setPaused(paused: Boolean) = context.recordingStore.edit {
-        it[Keys.paused] = paused
-        if (!paused) it[Keys.privateUntil] = 0L
+    suspend fun setPaused(paused: Boolean) {
+        context.recordingStore.edit {
+            it[Keys.paused] = paused
+            if (!paused) it[Keys.privateUntil] = 0L
+        }
     }
 
-    suspend fun setPrivateUntil(epochMs: Long) = context.recordingStore.edit { it[Keys.privateUntil] = epochMs }
+    suspend fun setPrivateUntil(epochMs: Long) {
+        context.recordingStore.edit { it[Keys.privateUntil] = epochMs }
+    }
 
-    suspend fun setHoldWakeLock(hold: Boolean) = context.recordingStore.edit { it[Keys.wakeLock] = hold }
+    suspend fun setHoldWakeLock(hold: Boolean) {
+        context.recordingStore.edit { it[Keys.wakeLock] = hold }
+    }
 }
