@@ -47,7 +47,7 @@ class SegmenterTest {
     @Test
     fun shortBlipIsDropped() {
         feed(20, 0.1f)
-        feed(5, 0.9f)           // 160 ms < 250 ms
+        feed(10, 0.9f)          // 320 ms < 400 ms
         feed(30, 0.1f)
         assertTrue(out.isEmpty())
         assertEquals(1, seg.droppedShort)

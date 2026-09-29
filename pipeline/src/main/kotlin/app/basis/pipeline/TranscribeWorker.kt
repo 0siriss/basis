@@ -92,10 +92,12 @@ class TranscribeWorker @AssistedInject constructor(
 
         val t0 = System.currentTimeMillis()
         val cpu0 = Process.getElapsedCpuTime()
+        val meter = CurrentMeter(applicationContext).also { it.start() }
         val recognizer = try {
             SpeechRecognizers.create(model, models, AsrOptions(threads = settings.threads, whisperLanguage = settings.whisperLanguage))
         } catch (t: Throwable) {
             AppLog.e(TAG, "не удалось загрузить ${model.spec.title}", t)
+            meter.stop()
             status.update { it.copy(running = false, last = "Ошибка загрузки модели: ${t.message}") }
             return Result.success()
         }
@@ -128,19 +130,21 @@ class TranscribeWorker @AssistedInject constructor(
             return Result.retry()
         } finally {
             recognizer.close()
+            meter.stop()
         }
 
         val wallMs = System.currentTimeMillis() - t0
         val cpuMs = Process.getElapsedCpuTime() - cpu0
         val after = battery()
-        val mah = if (battery.chargeCounterUah > 0 && after.chargeCounterUah > 0) (battery.chargeCounterUah - after.chargeCounterUah) / 1000 else null
+        val energy = meter.result()
         val audit = AudioAudit.scan(applicationContext)
         val summary = "распознано ${report.processed} сегм. (пустых ${report.empty}${if (report.undecryptable > 0) ", нерасшифруемых ${report.undecryptable}" else ""}), " +
             "аудио ${formatDuration(report.audioMs / 1000)} за ${formatDuration(report.processingMs / 1000)}: " +
             "RTF %.3f (%.1f× быстрее реального времени), всего с загрузкой ${formatDuration(wallMs / 1000)}, CPU ${formatDuration(cpuMs / 1000)}".format(
                 report.rtf, if (report.rtf > 0) 1 / report.rtf else 0.0,
             ) +
-            (if (!battery.charging && !after.charging) ", батарея ${battery.level}%→${after.level}%" + (mah?.let { ", ≈$it мА·ч" } ?: "") else ", на зарядке") +
+            (if (!battery.charging && !after.charging) ", батарея ${battery.level}%→${after.level}%" +
+                (energy?.let { ", средний ток телефона %.0f мА, ≈%.1f мА·ч".format(it.avgMa, it.mah) } ?: "") else ", на зарядке") +
             (if (report.stoppedEarly) ", остановлено (условия/система), осталось ${report.remaining}" else "")
         AppLog.i(TAG, summary)
         if (audit.otherAudio.isEmpty()) {

@@ -8,7 +8,7 @@ data class SegmenterConfig(
     /** Silence is counted only below this (hysteresis between the two). */
     val negThreshold: Float = 0.35f,
     /** Segments with less speech than this are dropped (clicks, coughs). */
-    val minSpeechMs: Int = 250,
+    val minSpeechMs: Int = 400,
     /** A pause this long ends the segment. */
     val minSilenceMs: Int = 700,
     /** Audio kept before the detected start, so first syllables aren't cut. */
