@@ -43,7 +43,9 @@ adb shell am start -W -n "$PKG/app.basis.MainActivity" >/dev/null; sleep 10; svc
 step "stop"
 cmd stop; sleep 5; svc | tee -a "$OUT/steps.txt"
 
-adb logcat -d -v time 'Basis/*:V' 'ActivityManager:W' 'AndroidRuntime:E' '*:S' > "$OUT/logcat.txt"
+# logcat filterspecs don't support tag wildcards: dump everything, grep ours.
+adb logcat -d -v time > "$OUT/logcat-all.txt"
+grep -E "Basis/|AndroidRuntime|ForegroundService|basis.diary" "$OUT/logcat-all.txt" > "$OUT/logcat.txt"
 adb shell dumpsys notification --noredact | grep -A3 "$PKG" > "$OUT/notifications.txt" || true
 
 SUMMARY="$OUT/summary.md"
@@ -52,7 +54,7 @@ SUMMARY="$OUT/summary.md"
   echo '```'
   cat "$OUT/steps.txt"
   echo '--- Basis log (grep) ---'
-  grep -E "Basis/" "$OUT/logcat.txt" | cut -c1-220 | tail -80
+  grep -E "Basis/" "$OUT/logcat.txt" | cut -c1-240 | tail -120
   echo '```'
 } > "$SUMMARY"
 cat "$SUMMARY"
