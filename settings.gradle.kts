@@ -10,6 +10,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Prebuilt native AARs fetched by tools/fetch-native.sh (not committed).
+        maven {
+            url = uri("third_party/maven")
+            content { includeGroup("com.k2fsa.sherpa.onnx") }
+        }
     }
 }
 
@@ -19,7 +24,11 @@ include(
     ":app",
     ":core:common",
     ":core:datastore",
+    ":core:crypto",
     ":audio:capture",
+    ":audio:vad",
+    ":audio:buffer",
+    ":ml:models",
     ":feature:home",
     ":feature:logs",
 )

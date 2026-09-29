@@ -20,6 +20,13 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v5
+      - name: Cache native AARs
+        uses: actions/cache@v4
+        with:
+          path: third_party/maven
+          key: native-${{ hashFiles('tools/fetch-native.sh') }}
+      - name: Fetch native libraries (sherpa-onnx AAR, SHA-256 pinned)
+        run: ./tools/fetch-native.sh
       - name: Build, unit tests, lint
         shell: bash
         run: |

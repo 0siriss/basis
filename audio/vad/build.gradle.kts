@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "app.basis.audio.capture"
+    namespace = "app.basis.audio.vad"
     compileSdk = 37
     defaultConfig {
         minSdk = 31
@@ -14,17 +14,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
 }
 
 dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation(project(":core:common"))
-    implementation(project(":core:datastore"))
-    api(project(":audio:vad"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.service)
     implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    implementation(project(":core:common"))
+    api(project(":audio:buffer"))
+    api(project(":ml:models"))
+    implementation(libs.sherpa.onnx)
 }

@@ -17,6 +17,9 @@ adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS
 adb shell dumpsys deviceidle whitelist +$PKG >/dev/null
 adb logcat -c
 
+step "download VAD model"
+cmd download-models; sleep 15
+
 step "start recording"
 cmd start; sleep 15; svc | tee -a "$OUT/steps.txt"
 

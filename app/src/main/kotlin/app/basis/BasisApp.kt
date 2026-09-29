@@ -33,7 +33,8 @@ class BasisApp : Application() {
             "старт процесса: v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}), " +
                 "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), " +
                 "оптимизация батареи отключена=${power.isIgnoringBatteryOptimizations(packageName)}, " +
-                "standby bucket=${bucketName(bucket)}",
+                "standby bucket=${bucketName(bucket)}, " +
+                "фоновые ограничения=${getSystemService(ActivityManager::class.java).isBackgroundRestricted}",
         )
     }
 
@@ -42,8 +43,17 @@ class BasisApp : Application() {
         val am = getSystemService(ActivityManager::class.java)
         val sp = getSharedPreferences("diag", MODE_PRIVATE)
         val lastSeen = sp.getLong("last_exit_ts", 0)
-        val exits = runCatching { am.getHistoricalProcessExitReasons(packageName, 0, 10) }.getOrDefault(emptyList())
-            .filter { it.timestamp > lastSeen }
+        val all = runCatching { am.getHistoricalProcessExitReasons(packageName, 0, 10) }.getOrDefault(emptyList())
+        val exits = all.filter { it.timestamp > lastSeen }
+        if (exits.isEmpty()) {
+            val last = all.firstOrNull()
+            AppLog.i(
+                "Exit",
+                "новых записей о завершении прошлого процесса нет" + (last?.let {
+                    " (последняя известная: ${FMT.format(Instant.ofEpochMilli(it.timestamp).atZone(ZoneId.systemDefault()))}, ${exitReasonName(it.reason)})"
+                } ?: ""),
+            )
+        }
         exits.reversed().forEach {
             val at = FMT.format(Instant.ofEpochMilli(it.timestamp).atZone(ZoneId.systemDefault()))
             AppLog.w(

@@ -15,7 +15,7 @@ android {
         targetSdk = 37
         // CI run number → monotonically increasing, so every artifact installs over the previous one.
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.1.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}-stage1"
+        versionName = "0.2.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}-stage2"
     }
 
     signingConfigs {
@@ -31,11 +31,14 @@ android {
     buildTypes {
         debug {
             signingConfig = signingConfigs.getByName("dev")
+            // x86_64 only for CI emulators.
+            ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
         release {
             signingConfig = signingConfigs.getByName("dev")
+            ndk { abiFilters += listOf("arm64-v8a") }
             isMinifyEnabled = false
         }
     }

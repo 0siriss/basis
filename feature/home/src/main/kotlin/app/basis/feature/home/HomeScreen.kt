@@ -164,6 +164,8 @@ fun HomeScreen(onOpenLogs: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
             }
             if (settings.enabled) TextButton(onClick = vm::stop) { Text("Выключить запись полностью") }
 
+            SpeechCards()
+
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Диагностика", style = MaterialTheme.typography.titleMedium)

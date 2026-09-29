@@ -11,6 +11,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import app.basis.core.common.AppLog
 import app.basis.core.datastore.RecordingPrefs
+import app.basis.audio.vad.SpeechPipeline
 import app.basis.core.datastore.RecordingSettings
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
@@ -32,6 +33,7 @@ class RecordingService : LifecycleService() {
 
     @Inject lateinit var prefs: RecordingPrefs
     @Inject lateinit var controller: RecordingController
+    @Inject lateinit var speech: SpeechPipeline
 
     private var capture: AudioCapture? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -42,8 +44,8 @@ class RecordingService : LifecycleService() {
     private var silentSinceMs = 0L
     private var silenceReported = false
 
-    /** Downstream consumer of audio frames. Stage 1: none (stats only). Stage 2 plugs VAD in here. */
-    private val sink = AudioFrameSink { _, _, _ -> }
+    /** Frames go to VAD; only detected speech is kept (encrypted). */
+    private val sink = AudioFrameSink { samples, count, timeMs -> speech.onFrame(samples, count, timeMs) }
 
     override fun onCreate() {
         super.onCreate()
@@ -157,7 +159,11 @@ class RecordingService : LifecycleService() {
                 }
             },
         )
-        if (!c.start()) return false
+        speech.start()
+        if (!c.start()) {
+            speech.stop()
+            return false
+        }
         capture = c
         if (holdWakeLock) {
             wakeLock = getSystemService(PowerManager::class.java)
@@ -171,6 +177,7 @@ class RecordingService : LifecycleService() {
     private fun stopCapture() {
         capture?.stop()
         capture = null
+        speech.stop() // flushes the segment in progress
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
         status = status.copy(live = null)

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Used ONLY by ModelManager to download model files from their original sources. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

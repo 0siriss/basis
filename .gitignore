@@ -8,3 +8,4 @@ local.properties
 *.onnx
 *.aar
 .cxx/
+/third_party/
