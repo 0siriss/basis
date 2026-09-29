@@ -24,7 +24,8 @@ import javax.inject.Inject
 /**
  * Debug builds only; lets CI drive the app via `am start -n …/app.basis.DebugCommandActivity --es cmd …`.
  * cmd = start | pause | resume | stop | private:<min> | download-models | download:<model id> |
- *       inject-wav:<path> (16 kHz mono PCM16 WAV → encrypted buffer) | transcribe | dump-transcripts
+ *       inject-wav:<path> (16 kHz mono PCM16 WAV → encrypted buffer) | transcribe | dump-transcripts |
+ *       llm:<model id> | llm-threads:<n> | summarize | dump-summaries
  */
 @AndroidEntryPoint
 class DebugCommandActivity : ComponentActivity() {
@@ -33,6 +34,8 @@ class DebugCommandActivity : ComponentActivity() {
     @Inject lateinit var scheduler: TranscriptionScheduler
     @Inject lateinit var store: SegmentStore
     @Inject lateinit var dao: TranscriptDao
+    @Inject lateinit var summaries: app.basis.core.database.SummaryDao
+    @Inject lateinit var llmPrefs: app.basis.core.datastore.LlmPrefs
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +53,12 @@ class DebugCommandActivity : ComponentActivity() {
                     cmd.startsWith("download:") -> ModelCatalog.byId(cmd.substringAfter(':'))?.let(models::download)
                     cmd.startsWith("inject-wav:") -> withContext(Dispatchers.IO) { injectWav(File(cmd.substringAfter(':'))) }
                     cmd == "transcribe" -> scheduler.runNow()
+                    cmd.startsWith("llm:") -> llmPrefs.setModel(cmd.substringAfter(':'))
+                    cmd.startsWith("llm-threads:") -> llmPrefs.setThreads(cmd.substringAfter(':').toInt())
+                    cmd == "summarize" -> scheduler.summarizeNow()
+                    cmd == "dump-summaries" -> withContext(Dispatchers.IO) {
+                        summaries.byDay(java.time.LocalDate.now().toString()).forEach { AppLog.i("Debug", "сводка ${it.kind} ${it.periodStartMs}: ${it.json}") }
+                    }
                     // Debug only: speech text never goes to logs in normal operation.
                     cmd == "dump-transcripts" -> withContext(Dispatchers.IO) {
                         val today = java.time.LocalDate.now().toString()

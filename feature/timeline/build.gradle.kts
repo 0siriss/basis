@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "app.basis.feature.transcripts"
+    namespace = "app.basis.feature.timeline"
     compileSdk = 37
     defaultConfig {
         minSdk = 31
@@ -33,5 +33,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(project(":core:common"))
     implementation(project(":core:database"))
+    implementation(project(":pipeline"))
 }
 

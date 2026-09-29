@@ -102,7 +102,7 @@ fun HomeScreen(onOpenLogs: () -> Unit, onOpenTranscripts: () -> Unit, vm: HomeVi
             TopAppBar(
                 title = { Text("Ежедневник") },
                 actions = {
-                    IconButton(onClick = onOpenTranscripts) { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Расшифровки") }
+                    IconButton(onClick = onOpenTranscripts) { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Дневник") }
                     IconButton(onClick = onOpenLogs) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Логи") }
                 },
             )
@@ -168,6 +168,7 @@ fun HomeScreen(onOpenLogs: () -> Unit, onOpenTranscripts: () -> Unit, vm: HomeVi
 
             SpeechCards()
             AsrCard()
+            LlmCard()
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

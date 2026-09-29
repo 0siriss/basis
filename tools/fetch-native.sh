@@ -37,3 +37,19 @@ cat > "$dest/sherpa-onnx-$SHERPA_VERSION.pom" <<POM
 </project>
 POM
 echo "ok: $aar"
+
+# llama.cpp sources (built from source via CMake in ml/llm), pinned to a tag and its commit hash.
+LLAMA_TAG=b11249
+LLAMA_COMMIT=6d78fb0727fdd8fbae15b6b5e9e0c0951a750d69
+llama="$ROOT/third_party/llama.cpp"
+if [ -d "$llama/.git" ] && [ "$(git -C "$llama" rev-parse HEAD)" = "$LLAMA_COMMIT" ]; then
+  echo "llama.cpp $LLAMA_TAG: already present"
+else
+  rm -rf "$llama"
+  GIT_LFS_SKIP_SMUDGE=1 git clone -q --depth 1 --branch "$LLAMA_TAG" https://github.com/ggml-org/llama.cpp "$llama"
+  got="$(git -C "$llama" rev-parse HEAD)"
+  if [ "$got" != "$LLAMA_COMMIT" ]; then
+    echo "llama.cpp $LLAMA_TAG points to $got, expected $LLAMA_COMMIT" >&2; exit 1
+  fi
+  echo "ok: llama.cpp $LLAMA_TAG ($got)"
+fi

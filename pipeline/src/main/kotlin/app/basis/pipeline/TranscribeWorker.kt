@@ -71,6 +71,7 @@ class TranscribeWorker @AssistedInject constructor(
         val pending = store.list()
         if (pending.isEmpty()) {
             if (manual) AppLog.i(TAG, "буфер пуст — распознавать нечего")
+            scheduler.enqueueSummaries()
             return Result.success()
         }
         val model = AsrModel.byId(settings.modelId)
@@ -159,6 +160,7 @@ class TranscribeWorker @AssistedInject constructor(
             )
         }
         if (report.stoppedEarly && !isStopped) scheduler.scheduleFromSettings()
+        scheduler.enqueueSummaries()
         return Result.success()
     }
 

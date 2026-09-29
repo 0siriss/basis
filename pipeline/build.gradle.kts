@@ -29,6 +29,9 @@ dependencies {
     api(project(":core:datastore"))
     api(project(":audio:buffer"))
     api(project(":ml:asr"))
+    api(project(":ml:llm"))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // org.json is part of Android; the JVM unit tests need the real implementation.
+    testImplementation("org.json:json:20260814")
 }

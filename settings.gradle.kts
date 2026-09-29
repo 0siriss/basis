@@ -31,8 +31,9 @@ include(
     ":audio:buffer",
     ":ml:models",
     ":ml:asr",
+    ":ml:llm",
     ":pipeline",
     ":feature:home",
     ":feature:logs",
-    ":feature:transcripts",
+    ":feature:timeline",
 )

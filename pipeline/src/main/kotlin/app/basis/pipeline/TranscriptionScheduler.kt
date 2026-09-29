@@ -48,8 +48,31 @@ class TranscriptionScheduler @Inject constructor(
         wm.enqueueUniqueWork(NOW, ExistingWorkPolicy.KEEP, req)
     }
 
+    /** Called after a recognition run: builds summaries for hours/days that became complete. */
+    suspend fun enqueueSummaries() {
+        val s = prefs.current()
+        val req = OneTimeWorkRequestBuilder<app.basis.pipeline.summary.SummarizeWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiresCharging(s.mode == ProcessingMode.CHARGING_ONLY)
+                    .build(),
+            )
+            .build()
+        wm.enqueueUniqueWork(SUMMARY, ExistingWorkPolicy.KEEP, req)
+    }
+
+    /** Builds summaries now, including the current hour and day (for testing / on demand). */
+    fun summarizeNow() {
+        val req = OneTimeWorkRequestBuilder<app.basis.pipeline.summary.SummarizeWorker>()
+            .setInputData(workDataOf(app.basis.pipeline.summary.SummarizeWorker.KEY_MANUAL to true))
+            .build()
+        wm.enqueueUniqueWork(SUMMARY_NOW, ExistingWorkPolicy.KEEP, req)
+    }
+
     private companion object {
         const val PERIODIC = "transcribe-periodic"
         const val NOW = "transcribe-now"
+        const val SUMMARY = "summarize"
+        const val SUMMARY_NOW = "summarize-now"
     }
 }

@@ -19,7 +19,7 @@ data class ModelArchive(
     val members: List<String>,
 )
 
-enum class ModelRole { VAD, ASR }
+enum class ModelRole { VAD, ASR, LLM, EMBEDDING }
 
 data class ModelSpec(
     val id: String,
@@ -126,7 +126,32 @@ object ModelCatalog {
         installedBytes = 1_036_614_000,
     )
 
-    val all: List<ModelSpec> = listOf(SILERO_VAD, GIGAAM_V3, WHISPER_BASE, WHISPER_SMALL, WHISPER_TURBO)
+    private const val HF = "https://huggingface.co"
+
+    private fun gguf(id: String, title: String, repo: String, file: String, sha256: String, size: Long) = ModelSpec(
+        id = id,
+        title = title,
+        role = ModelRole.LLM,
+        license = "Apache-2.0",
+        source = "Qwen (Alibaba), GGUF-квантизация unsloth: huggingface.co/$repo",
+        files = listOf(ModelFile(name = file, url = "$HF/$repo/resolve/main/$file", sha256 = sha256, sizeBytes = size)),
+    )
+
+    /** Default: best quality/speed balance for Russian summaries on a flagship phone. */
+    val QWEN35_4B = gguf(
+        "qwen3.5-4b-q4km", "Qwen3.5 4B (Q4_K_M)", "unsloth/Qwen3.5-4B-GGUF", "Qwen3.5-4B-Q4_K_M.gguf",
+        "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4", 2_740_937_888,
+    )
+    val QWEN35_2B = gguf(
+        "qwen3.5-2b-q4km", "Qwen3.5 2B (Q4_K_M, быстрее)", "unsloth/Qwen3.5-2B-GGUF", "Qwen3.5-2B-Q4_K_M.gguf",
+        "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223", 1_280_835_840,
+    )
+    val QWEN35_08B = gguf(
+        "qwen3.5-0.8b-q4km", "Qwen3.5 0.8B (Q4_K_M, для проверки)", "unsloth/Qwen3.5-0.8B-GGUF", "Qwen3.5-0.8B-Q4_K_M.gguf",
+        "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517", 532_517_120,
+    )
+
+    val all: List<ModelSpec> = listOf(SILERO_VAD, GIGAAM_V3, WHISPER_BASE, WHISPER_SMALL, WHISPER_TURBO, QWEN35_4B, QWEN35_2B, QWEN35_08B)
 
     fun byId(id: String): ModelSpec? = all.firstOrNull { it.id == id }
 

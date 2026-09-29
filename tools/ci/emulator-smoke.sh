@@ -58,6 +58,14 @@ if [ -f build/asr/example.wav ]; then
   cmd transcribe
   if wait_log "Basis/ASR.*распознано" 240; then echo "transcribed" | tee -a "$OUT/steps.txt"; else echo "NOT transcribed" | tee -a "$OUT/steps.txt"; fi
   cmd dump-transcripts; sleep 2
+  step "LLM summary: Qwen3.5 0.8B over the transcript"
+  cmd download:qwen3.5-0.8b-q4km
+  if wait_log "Qwen3.5 0.8B.*: готова" 300; then echo "llm ready" | tee -a "$OUT/steps.txt"; else echo "llm NOT ready" | tee -a "$OUT/steps.txt"; fi
+  cmd llm:qwen3.5-0.8b-q4km; cmd llm-threads:2; sleep 1
+  cmd summarize
+  if wait_log "Basis/Summary.*сводки:" 900; then echo "summarized" | tee -a "$OUT/steps.txt"; else echo "NOT summarized" | tee -a "$OUT/steps.txt"; fi
+  cmd dump-summaries; sleep 2
+  adb logcat -d | grep -E "BasisLlm|Basis/LLM|Basis/Summary" | cut -c1-400 | tail -30 | tee -a "$OUT/steps.txt"
   echo "audio files left in app storage:" | tee -a "$OUT/steps.txt"
   adb shell run-as $PKG find . -name '*.bseg*' -o -name '*.wav' -o -name '*.pcm' 2>&1 | tee -a "$OUT/steps.txt"
 fi

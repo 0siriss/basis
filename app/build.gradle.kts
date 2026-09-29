@@ -15,7 +15,7 @@ android {
         targetSdk = 37
         // CI run number → monotonically increasing, so every artifact installs over the previous one.
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.3.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}-stage3"
+        versionName = "0.4.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}-stage4"
     }
 
     signingConfigs {
@@ -51,6 +51,11 @@ android {
         compose = true
         buildConfig = true
     }
+    packaging {
+        // llama.cpp loads its CPU backend variants with dlopen() from nativeLibraryDir,
+        // so native libraries must be extracted on install.
+        jniLibs.useLegacyPackaging = true
+    }
     lint {
         abortOnError = false
         checkReleaseBuilds = false
@@ -63,7 +68,7 @@ dependencies {
     implementation(project(":audio:capture"))
     implementation(project(":feature:home"))
     implementation(project(":feature:logs"))
-    implementation(project(":feature:transcripts"))
+    implementation(project(":feature:timeline"))
     implementation(project(":pipeline"))
     implementation(project(":ml:models"))
 
