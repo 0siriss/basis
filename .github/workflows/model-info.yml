@@ -1,0 +1,17 @@
+name: model-info
+
+# Collects SHA-256 and sizes of candidate models from Hugging Face (not reachable from the dev sandbox).
+on:
+  push:
+    paths:
+      - tools/hf-model-info.py
+      - .github/workflows/model-info.yml
+  workflow_dispatch:
+
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 tools/hf-model-info.py
