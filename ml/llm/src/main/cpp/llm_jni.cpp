@@ -78,11 +78,14 @@ Java_app_basis_ml_llm_LlamaNative_nativeInit(JNIEnv *env, jobject, jstring libDi
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_app_basis_ml_llm_LlamaNative_nativeLoad(JNIEnv *env, jobject, jstring path, jint nCtx, jint nThreads) {
+Java_app_basis_ml_llm_LlamaNative_nativeLoad(JNIEnv *env, jobject, jstring path, jint nCtx, jint nThreads, jboolean repack) {
     std::string p = to_std(env, path);
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;
     mp.load_mode = LLAMA_LOAD_MODE_MMAP;
+    // Repacking weights for the fast ARM kernels (KleidiAI/i8mm) copies them into anonymous memory:
+    // faster, but roughly doubles RAM use. Off = weights stay memory-mapped (low-memory mode).
+    mp.use_extra_bufts = repack;
     llama_model *model = llama_model_load_from_file(p.c_str(), mp);
     if (!model) {
         LOGE("failed to load model %s", p.c_str());
@@ -107,7 +110,7 @@ Java_app_basis_ml_llm_LlamaNative_nativeLoad(JNIEnv *env, jobject, jstring path,
     h->vocab = llama_model_get_vocab(model);
     char desc[256];
     llama_model_desc(model, desc, sizeof(desc));
-    LOGI("loaded %s, ctx=%u, threads=%d", desc, llama_n_ctx(ctx), nThreads);
+    LOGI("loaded %s, ctx=%u, threads=%d, repack=%d", desc, llama_n_ctx(ctx), nThreads, (int) repack);
     return reinterpret_cast<jlong>(h);
 }
 
@@ -117,6 +120,11 @@ Java_app_basis_ml_llm_LlamaNative_nativeDescribe(JNIEnv *env, jobject, jlong han
     char desc[256];
     llama_model_desc(h->model, desc, sizeof(desc));
     return env->NewStringUTF(desc);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_basis_ml_llm_LlamaNative_nativeSetThreads(JNIEnv *, jobject, jlong handle, jint n) {
+    llama_set_n_threads(reinterpret_cast<LlmHandle *>(handle)->ctx, n, n);
 }
 
 extern "C" JNIEXPORT jint JNICALL

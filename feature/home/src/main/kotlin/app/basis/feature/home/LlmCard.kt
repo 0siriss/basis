@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,11 +49,26 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LlmViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
     private val prefs: LlmPrefs,
     private val models: ModelManager,
     private val scheduler: TranscriptionScheduler,
+    private val benchmark: app.basis.pipeline.summary.LlmBenchmark,
     status: SummaryStatus,
 ) : ViewModel() {
+    private val _bench = MutableStateFlow<String?>(null)
+    val bench: StateFlow<String?> = _bench.asStateFlow()
+
+    fun runBenchmark() = viewModelScope.launch {
+        _bench.value = "Идёт тест скорости…"
+        _bench.value = benchmark.run()
+    }
+
+    fun failures(modelId: String): Int = app.basis.ml.llm.LlmGuard.failures(appContext, modelId)
+    fun resetGuard() = app.basis.ml.llm.LlmGuard.reset(appContext)
+    fun setContext(n: Int) = viewModelScope.launch { prefs.setContextSize(n) }
+    fun setLowMemory(on: Boolean) = viewModelScope.launch { prefs.setLowMemory(on); app.basis.ml.llm.LlmGuard.reset(appContext) }
+
     val settings: StateFlow<LlmSettings> = prefs.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LlmSettings())
     val state: StateFlow<SummaryState> = status.state
     val modelStates: Map<LlmModel, StateFlow<ModelState>> = LlmModel.entries.associateWith { models.state(it.spec) }
@@ -60,6 +76,7 @@ class LlmViewModel @Inject constructor(
     val message: StateFlow<String?> = _message.asStateFlow()
 
     fun select(m: LlmModel) = viewModelScope.launch { prefs.setModel(m.spec.id) }
+
     fun download(m: LlmModel) = models.download(m.spec)
     fun delete(m: LlmModel) = models.delete(m.spec)
     fun import(uri: Uri) = viewModelScope.launch { _message.value = models.import(uri) }
@@ -93,10 +110,33 @@ fun LlmCard(vm: LlmViewModel = hiltViewModel()) {
                     }
                 }
             }
-            Text("Потоков CPU: ${settings.threads}, контекст ${settings.contextSize} токенов")
+            val fails = remember(selected, state.last) { vm.failures(selected.spec.id) }
+            if (fails > 0) {
+                Text(
+                    "⚠ Процесс завершался во время работы этой модели ($fails раз) — вероятно, не хватает памяти. " +
+                        (if (fails >= app.basis.ml.llm.LlmGuard.MAX_FAILURES) "Автоматические сводки с ней остановлены. " else "") +
+                        "Попробуйте «Экономию памяти» или модель поменьше.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text("Потоков CPU: ${settings.threads}")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(4, 6, 8).forEach { n -> FilterChip(selected = settings.threads == n, onClick = { vm.setThreads(n) }, label = { Text("$n") }) }
             }
+            Text("Контекст: ${settings.contextSize} токенов")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(4096, 8192).forEach { n -> FilterChip(selected = settings.contextSize == n, onClick = { vm.setContext(n) }, label = { Text("$n") }) }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Экономия памяти (медленнее, ~вдвое меньше RAM)", Modifier.weight(1f))
+                androidx.compose.material3.Switch(checked = settings.lowMemory, onCheckedChange = vm::setLowMemory)
+            }
+            val bench by vm.bench.collectAsStateWithLifecycle()
+            androidx.compose.material3.OutlinedButton(onClick = vm::runBenchmark, enabled = !state.running && bench != "Идёт тест скорости…") {
+                Text("Тест скорости (4/6/8 потоков)")
+            }
+            bench?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             HorizontalDivider()
             if (state.running) {
                 Text("Идёт построение сводки: ${state.step}")

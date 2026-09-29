@@ -35,6 +35,7 @@ class BasisApp : Application(), Configuration.Provider {
         }
         logStartup()
         logPreviousExits()
+        app.basis.ml.llm.LlmGuard.checkPreviousProcess(this)
         app.basis.audio.capture.BootDiagnostics.check(this)
         MainScope().launch { scheduler.scheduleFromSettings() }
     }
@@ -74,7 +75,7 @@ class BasisApp : Application(), Configuration.Provider {
                 "Exit",
                 "прошлый процесс завершён $at: ${exitReasonName(it.reason)}" +
                     (it.description?.let { d -> " ($d)" } ?: "") +
-                    ", importance=${it.importance}, pss=${it.pss / 1024} МБ",
+                    ", сигнал/статус=${it.status}, importance=${it.importance}, pss=${it.pss / 1024} МБ, rss=${it.rss / 1024} МБ",
             )
         }
         exits.maxOfOrNull { it.timestamp }?.let { sp.edit().putLong("last_exit_ts", it).apply() }

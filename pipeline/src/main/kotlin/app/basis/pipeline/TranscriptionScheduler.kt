@@ -63,6 +63,7 @@ class TranscriptionScheduler @Inject constructor(
 
     /** Builds summaries now, including the current hour and day (for testing / on demand). */
     fun summarizeNow() {
+        app.basis.ml.llm.LlmGuard.grantManual(context)
         val req = OneTimeWorkRequestBuilder<app.basis.pipeline.summary.SummarizeWorker>()
             .setInputData(workDataOf(app.basis.pipeline.summary.SummarizeWorker.KEY_MANUAL to true))
             .build()

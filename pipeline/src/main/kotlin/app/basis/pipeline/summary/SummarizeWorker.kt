@@ -18,6 +18,7 @@ import app.basis.core.datastore.ProcessingMode
 import app.basis.ml.llm.ChatPrompt
 import app.basis.ml.llm.GenOptions
 import app.basis.ml.llm.LlamaCppEngine
+import app.basis.ml.llm.LlmGuard
 import app.basis.ml.llm.LlmEngine
 import app.basis.ml.llm.LlmModel
 import app.basis.ml.models.ModelManager
@@ -100,6 +101,13 @@ class SummarizeWorker @AssistedInject constructor(
                 if (plan.hours.isEmpty() && !plan.day) continue
 
                 if (engine == null) {
+                    if (LlmGuard.blocked(applicationContext, model.spec.id) && !(manual && LlmGuard.consumeManualGrant(applicationContext))) {
+                        val msg = "модель ${model.spec.title} ${LlmGuard.failures(applicationContext, model.spec.id)} раза завершалась вместе с процессом " +
+                            "(не хватает памяти?) — автоматические сводки остановлены. Выберите модель меньше, включите «Экономию памяти» или запустите вручную"
+                        AppLog.e(TAG, msg)
+                        status.update { it.copy(last = msg) }
+                        return Result.success()
+                    }
                     if (!models.isReady(model.spec)) {
                         AppLog.w(TAG, "модель ${model.spec.title} не загружена — сводки ждут")
                         status.update { it.copy(last = "Модель ${model.spec.title} не загружена") }
@@ -108,7 +116,7 @@ class SummarizeWorker @AssistedInject constructor(
                     status.update { it.copy(running = true, step = "загрузка ${model.spec.title}") }
                     runCatching { setForeground(foregroundInfo(model.spec.title)) }
                         .onFailure { AppLog.w(TAG, "не удалось перейти в foreground (${it.javaClass.simpleName})") }
-                    engine = LlamaCppEngine.load(applicationContext, model, models, llmSettings.threads, llmSettings.contextSize)
+                    engine = LlamaCppEngine.load(applicationContext, model, models, llmSettings.threads, llmSettings.contextSize, repack = !llmSettings.lowMemory)
                 }
                 val summarizer = summarizer(engine, stats)
 
@@ -153,6 +161,7 @@ class SummarizeWorker @AssistedInject constructor(
         }
 
         if (stats.calls > 0) {
+            LlmGuard.success(applicationContext, model.spec.id)
             val e = meter.result()
             val msg = "сводки: часов $hoursDone, дней $daysDone, вызовов LLM ${stats.calls}, " +
                 "промпт ${stats.promptTokens} ток. (%.0f ток/с), ответ ${stats.genTokens} ток. (%.1f ток/с), всего ${formatDuration((System.currentTimeMillis() - t0) / 1000)}".format(
