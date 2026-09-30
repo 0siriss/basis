@@ -21,8 +21,9 @@ struct LlmHandle {
     llama_model *model = nullptr;
     llama_context *ctx = nullptr;
     const llama_vocab *vocab = nullptr;
-    // Stats of the last generate(): prompt tokens, prompt ms, generated tokens, generation ms.
-    int64_t stats[4] = {0, 0, 0, 0};
+    // Stats of the last generate(): prompt tokens, prompt ms, generated tokens, generation ms,
+    // stall events, threads at the end.
+    int64_t stats[6] = {0, 0, 0, 0, 0, 0};
 };
 
 void log_callback(ggml_log_level level, const char *text, void *) {
@@ -212,7 +213,24 @@ Java_app_basis_ml_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject, jlong han
     int generated = 0;
     char piece[256];
     bool ok = true;
+    // Watchdog: on a phone some thread counts intermittently collapse to ~0.2 tok/s (measured on
+    // Snapdragon 8 Elite / Nubia). Three consecutive tokens slower than 1 s → halve the threads.
+    int slow_run = 0;
+    int64_t t_tok = now_ms();
     for (; generated < maxTokens; generated++) {
+        int64_t t_now = now_ms();
+        if (generated > 0) {
+            if (t_now - t_tok > 1000) slow_run++; else slow_run = 0;
+            int nt = llama_n_threads(h->ctx);
+            if (slow_run >= 3 && nt > 2) {
+                int nn = std::max(2, nt / 2);
+                llama_set_n_threads(h->ctx, nn, nn);
+                h->stats[4]++;
+                LOGE("generation stalled (%lld ms/token): threads %d -> %d", (long long) (t_now - t_tok), nt, nn);
+                slow_run = 0;
+            }
+        }
+        t_tok = t_now;
         llama_token tok = llama_sampler_sample(smpl, h->ctx, -1);  // also accepts the token
         if (llama_vocab_is_eog(h->vocab, tok)) break;
         int n = llama_token_to_piece(h->vocab, tok, piece, sizeof(piece), 0, false);
@@ -232,6 +250,7 @@ Java_app_basis_ml_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject, jlong han
     }
     h->stats[2] = generated;
     h->stats[3] = now_ms() - t1;
+    h->stats[5] = llama_n_threads(h->ctx);
     llama_sampler_free(smpl);
     if (!ok && out.empty()) return nullptr;
 
@@ -243,8 +262,8 @@ Java_app_basis_ml_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject, jlong han
 extern "C" JNIEXPORT jlongArray JNICALL
 Java_app_basis_ml_llm_LlamaNative_nativeLastStats(JNIEnv *env, jobject, jlong handle) {
     auto *h = reinterpret_cast<LlmHandle *>(handle);
-    jlongArray arr = env->NewLongArray(4);
-    env->SetLongArrayRegion(arr, 0, 4, reinterpret_cast<const jlong *>(h->stats));
+    jlongArray arr = env->NewLongArray(6);
+    env->SetLongArrayRegion(arr, 0, 6, reinterpret_cast<const jlong *>(h->stats));
     return arr;
 }
 

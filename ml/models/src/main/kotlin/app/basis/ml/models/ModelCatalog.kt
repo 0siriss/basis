@@ -151,13 +151,19 @@ object ModelCatalog {
         "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517", 532_517_120,
     )
 
+    /** Q4_0: the format best served by the ARM-optimized kernels (KleidiAI/repack) — possibly faster prompt processing. */
+    val QWEN35_4B_Q40 = gguf(
+        "qwen3.5-4b-q40", "Qwen3.5 4B (Q4_0, быстрые ARM-ядра)", "unsloth/Qwen3.5-4B-GGUF", "Qwen3.5-4B-Q4_0.gguf",
+        "298fcb5fe7a77ccc79745ae24751560c5ac56874caff4bb39b1f2055bd72b8bb", 2_583_221_408,
+    )
+
     /** Classic transformer (no hybrid DeltaNet layers): well-optimized CPU kernels in llama.cpp. */
     val QWEN3_4B_2507 = gguf(
         "qwen3-4b-2507-q4km", "Qwen3 4B Instruct 2507 (Q4_K_M)", "unsloth/Qwen3-4B-Instruct-2507-GGUF", "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
         "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597", 2_497_281_120,
     )
 
-    val all: List<ModelSpec> = listOf(SILERO_VAD, GIGAAM_V3, WHISPER_BASE, WHISPER_SMALL, WHISPER_TURBO, QWEN35_4B, QWEN35_2B, QWEN35_08B, QWEN3_4B_2507)
+    val all: List<ModelSpec> = listOf(SILERO_VAD, GIGAAM_V3, WHISPER_BASE, WHISPER_SMALL, WHISPER_TURBO, QWEN35_4B, QWEN35_4B_Q40, QWEN35_2B, QWEN35_08B, QWEN3_4B_2507)
 
     fun byId(id: String): ModelSpec? = all.firstOrNull { it.id == id }
 

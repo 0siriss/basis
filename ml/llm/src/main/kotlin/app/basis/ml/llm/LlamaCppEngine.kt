@@ -35,7 +35,14 @@ class LlamaCppEngine private constructor(
             handle, format.render(prompt).toByteArray(), options.grammar, options.maxTokens, options.temperature, options.seed,
         ) { piece -> decoder.push(piece)?.let(onText) ?: true } ?: throw IOException("llama.cpp: генерация не удалась (см. logcat BasisLlm)")
         val s = LlamaNative.nativeLastStats(handle)
-        return GenResult(String(bytes, Charsets.UTF_8), s[0].toInt(), s[1], s[2].toInt(), s[3])
+        val r = GenResult(String(bytes, Charsets.UTF_8), s[0].toInt(), s[1], s[2].toInt(), s[3], s[4].toInt(), s[5].toInt())
+        if (r.stalls > 0) {
+            AppLog.w("LLM", "генерация тормозила: потоки снижены до ${r.threadsAtEnd} (${r.stalls} раз); ${MemoryProbe.snapshot(context)}")
+            // Keep the reduced count for the rest of this engine's life: the collapse tends to repeat.
+            threads = r.threadsAtEnd
+            applied = r.threadsAtEnd
+        }
+        return r
     }
 
     /** Changes the thread count without reloading (used by the speed test). */

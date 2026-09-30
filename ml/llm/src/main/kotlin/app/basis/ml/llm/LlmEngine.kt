@@ -15,6 +15,9 @@ data class GenResult(
     val promptMs: Long,
     val genTokens: Int,
     val genMs: Long,
+    /** Times the stall watchdog had to cut threads during this generation. */
+    val stalls: Int = 0,
+    val threadsAtEnd: Int = 0,
 ) {
     val promptTps: Double get() = if (promptMs > 0) promptTokens * 1000.0 / promptMs else 0.0
     val genTps: Double get() = if (genMs > 0) genTokens * 1000.0 / genMs else 0.0

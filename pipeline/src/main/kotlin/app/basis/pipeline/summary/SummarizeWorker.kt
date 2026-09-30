@@ -188,7 +188,8 @@ class SummarizeWorker @AssistedInject constructor(
                 stats.calls++
                 stats.promptTokens += r.promptTokens; stats.promptMs += r.promptMs
                 stats.genTokens += r.genTokens; stats.genMs += r.genMs
-                AppLog.d(TAG, "LLM: промпт ${r.promptTokens} ток. за ${r.promptMs} мс (%.0f ток/с), ответ ${r.genTokens} ток. за ${r.genMs} мс (%.1f ток/с)".format(r.promptTps, r.genTps))
+                AppLog.d(TAG, "LLM: промпт ${r.promptTokens} ток. за ${r.promptMs} мс (%.0f ток/с), ответ ${r.genTokens} ток. за ${r.genMs} мс (%.1f ток/с)".format(r.promptTps, r.genTps) +
+                    if (r.stalls > 0) ", торможение — потоки снижены до ${r.threadsAtEnd}" else "")
                 return r.text
             }
         }

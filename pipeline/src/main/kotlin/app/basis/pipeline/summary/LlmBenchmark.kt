@@ -41,7 +41,8 @@ class LlmBenchmark @Inject constructor(
                 for (t in listOf(2, 4, 6)) {
                     engine.setThreads(t)
                     val r = engine.generate(prompt, GenOptions(maxTokens = 96, temperature = 0f))
-                    val line = "$t потоков: промпт ${r.promptTokens} ток. %.0f ток/с, генерация ${r.genTokens} ток. %.1f ток/с".format(r.promptTps, r.genTps)
+                    val line = "$t потоков: промпт ${r.promptTokens} ток. %.0f ток/с, генерация ${r.genTokens} ток. %.1f ток/с".format(r.promptTps, r.genTps) +
+                        if (r.stalls > 0) " (тормозила, снижено до ${r.threadsAtEnd})" else ""
                     AppLog.i("LLM", "тест скорости ${model.spec.title}, $line; ${MemoryProbe.snapshot(context)}")
                     results += line
                 }
