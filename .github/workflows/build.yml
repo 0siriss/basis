@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           # Short summary at the end of the log (full log is long because of Gradle stack traces).
-          grep -nE "^e: |^\[ksp\].*error|error: |What went wrong|Execution failed|Caused by: " build.log | cut -c1-500 | grep -v "^\s*at " | head -120 || true
+          grep -nE "^e: |^\[ksp\].*error|error: |What went wrong|Execution failed|Caused by: | FAILED$|AssertionError|expected:" build.log | cut -c1-500 | grep -v "^\s*at " | head -120 || true
           grep -A6 "What went wrong" build.log | head -80 || true
       - name: Upload APKs
         uses: actions/upload-artifact@v6
