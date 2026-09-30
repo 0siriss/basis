@@ -29,7 +29,10 @@ object ChatPrompts {
         return when (c.kind) {
             ChunkEntity.DAY -> "$day, итог дня"
             ChunkEntity.HOUR -> "$day, сводка ${hm(c.startMs, zone)}–${hm(c.endMs, zone)}"
-            else -> "$day, ${hm(c.startMs, zone)}–${hm(c.endMs, zone)}, расшифровка"
+            else -> {
+                val (a, b) = hm(c.startMs, zone) to hm(c.endMs, zone)
+                "$day, ${if (a == b) a else "$a–$b"}, расшифровка"
+            }
         }
     }
 

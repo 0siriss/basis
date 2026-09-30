@@ -48,6 +48,11 @@ class ChatPromptsTest {
         assertEquals("вторник, 29 сентября 2026, итог дня", p.sources.single().label)
     }
 
+    @Test fun sameMinuteLabelIsCollapsed() {
+        val c = ChunkEntity(id = 1, day = "2026-09-29", kind = ChunkEntity.TRANSCRIPT, startMs = ms("2026-09-29", 5), endMs = ms("2026-09-29", 5) + 20_000, text = "x", hash = "1")
+        assertEquals("вторник, 29 сентября 2026, 05:00, расшифровка", ChatPrompts.label(c, zone))
+    }
+
     @Test fun citationsParsed() {
         assertEquals(setOf(1, 3, 4), ChatPrompts.citations("Ты обещал позвонить [1]. Ещё [3, 4]."))
         assertEquals(emptySet<Int>(), ChatPrompts.citations("нет ссылок"))

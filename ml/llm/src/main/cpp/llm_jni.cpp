@@ -28,7 +28,8 @@ struct LlmHandle {
 };
 
 void log_callback(ggml_log_level level, const char *text, void *) {
-    if (level >= GGML_LOG_LEVEL_WARN) __android_log_print(ANDROID_LOG_WARN, TAG, "%s", text);
+    // GGML_LOG_LEVEL_CONT (progress dots while loading) is numerically above ERROR: skip it.
+    if (level == GGML_LOG_LEVEL_WARN || level == GGML_LOG_LEVEL_ERROR) __android_log_print(ANDROID_LOG_WARN, TAG, "%s", text);
 }
 
 int64_t now_ms() {
