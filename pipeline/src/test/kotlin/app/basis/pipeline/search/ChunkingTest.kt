@@ -39,7 +39,8 @@ class ChunkingTest {
     }
 
     @Test fun longSegmentIsSplit() {
-        val out = chunk(listOf(Segment(at(12, 0), at(12, 1), words(400))))
+        // Distinct words: identical chunks would be deduplicated by hash.
+        val out = chunk(listOf(Segment(at(12, 0), at(12, 1), List(400) { "w$it" }.joinToString(" "))))
         assertEquals(listOf(150, 150, 100), out.map { it.text.removePrefix("[12:00] ").split(" ").size })
         assertTrue(out.all { it.text.split(" ").size - 1 <= 150 })
     }
