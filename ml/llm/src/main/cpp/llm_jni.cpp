@@ -3,6 +3,7 @@
 #include <jni.h>
 #include <android/log.h>
 #include <algorithm>
+#include <sched.h>
 #include <chrono>
 #include <string>
 #include <vector>
@@ -82,10 +83,11 @@ Java_app_basis_ml_llm_LlamaNative_nativeLoad(JNIEnv *env, jobject, jstring path,
     std::string p = to_std(env, path);
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;
-    mp.load_mode = LLAMA_LOAD_MODE_MMAP;
-    // Repacking weights for the fast ARM kernels (KleidiAI/i8mm) copies them into anonymous memory:
-    // faster, but roughly doubles RAM use. Off = weights stay memory-mapped (low-memory mode).
+    // Weights are repacked for the fast ARM kernels (KleidiAI/i8mm). With mmap the whole file also stays
+    // resident as file pages after repacking, so RSS ≈ 2× model size (measured on Nubia: 5.6 GB for a 4B
+    // Q4 → killed by the vendor's per-app limit). Reading the file instead keeps a single copy in RAM.
     mp.use_extra_bufts = repack;
+    mp.load_mode = repack ? LLAMA_LOAD_MODE_NONE : LLAMA_LOAD_MODE_MMAP;
     llama_model *model = llama_model_load_from_file(p.c_str(), mp);
     if (!model) {
         LOGE("failed to load model %s", p.c_str());
@@ -120,6 +122,15 @@ Java_app_basis_ml_llm_LlamaNative_nativeDescribe(JNIEnv *env, jobject, jlong han
     char desc[256];
     llama_model_desc(h->model, desc, sizeof(desc));
     return env->NewStringUTF(desc);
+}
+
+/** CPUs this thread may run on (Android moves background processes to a cpuset with fewer cores). */
+extern "C" JNIEXPORT jint JNICALL
+Java_app_basis_ml_llm_LlamaNative_nativeAllowedCpus(JNIEnv *, jobject) {
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    if (sched_getaffinity(0, sizeof(set), &set) != 0) return -1;
+    return CPU_COUNT(&set);
 }
 
 extern "C" JNIEXPORT void JNICALL

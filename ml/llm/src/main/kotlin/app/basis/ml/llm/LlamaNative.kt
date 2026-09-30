@@ -19,6 +19,7 @@ internal object LlamaNative {
     external fun nativeInit(libDir: String): String
     external fun nativeLoad(path: String, nCtx: Int, nThreads: Int, repack: Boolean): Long
     external fun nativeSetThreads(handle: Long, n: Int)
+    external fun nativeAllowedCpus(): Int
     external fun nativeDescribe(handle: Long): String
     external fun nativeContextSize(handle: Long): Int
     external fun nativeCountTokens(handle: Long, text: ByteArray): Int

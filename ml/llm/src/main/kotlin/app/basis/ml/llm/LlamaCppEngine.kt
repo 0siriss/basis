@@ -16,7 +16,9 @@ class LlamaCppEngine private constructor(
     override val modelId: String,
     private val format: PromptFormat,
     private var handle: Long,
+    private var threads: Int,
 ) : LlmEngine {
+    private var applied = threads
 
     override val contextSize: Int get() = LlamaNative.nativeContextSize(handle)
 
@@ -27,6 +29,7 @@ class LlamaCppEngine private constructor(
     @Synchronized
     override fun generate(prompt: ChatPrompt, options: GenOptions, onText: (String) -> Boolean): GenResult {
         check(handle != 0L) { "engine closed" }
+        applyThreadLimit()
         val decoder = Utf8Stream()
         val bytes = LlamaNative.nativeGenerate(
             handle, format.render(prompt).toByteArray(), options.grammar, options.maxTokens, options.temperature, options.seed,
@@ -37,7 +40,24 @@ class LlamaCppEngine private constructor(
 
     /** Changes the thread count without reloading (used by the speed test). */
     @Synchronized
-    fun setThreads(n: Int) = LlamaNative.nativeSetThreads(handle, n)
+    fun setThreads(n: Int) {
+        threads = n
+        applyThreadLimit()
+    }
+
+    /**
+     * More threads than available cores makes llama.cpp's spinning thread barrier collapse (measured:
+     * 0.2 tok/s at 8 threads vs 20 at 6). A backgrounded process may get only a few cores, so cap each time.
+     */
+    private fun applyThreadLimit() {
+        val allowed = LlamaNative.nativeAllowedCpus()
+        val n = if (allowed > 0) minOf(threads, maxOf(1, allowed - 1)) else threads
+        if (n != applied) {
+            LlamaNative.nativeSetThreads(handle, n)
+            if (n < threads) AppLog.i("LLM", "потоков $n вместо $threads: процессу доступно ядер $allowed")
+            applied = n
+        }
+    }
 
     @Synchronized
     override fun close() {
@@ -82,6 +102,7 @@ class LlamaCppEngine private constructor(
             contextSize: Int = 4096,
             repack: Boolean = true,
         ): LlamaCppEngine {
+            require(threads in 1..16)
             val info = LlamaNative.init(context.applicationInfo.nativeLibraryDir)
             val spec = model.spec
             require(models.isReady(spec)) { "модель ${spec.title} не загружена" }
@@ -96,7 +117,7 @@ class LlamaCppEngine private constructor(
             }
             AppLog.i("LLM", "${spec.title} загружена за ${System.currentTimeMillis() - t0} мс: ${LlamaNative.nativeDescribe(h)}; после: ${MemoryProbe.snapshot(context)}")
             AppLog.d("LLM", info.take(500))
-            return LlamaCppEngine(context.applicationContext, spec.id, model.format, h)
+            return LlamaCppEngine(context.applicationContext, spec.id, model.format, h, threads).also { it.applyThreadLimit() }
         }
     }
 }

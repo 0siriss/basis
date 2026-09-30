@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Measures prompt/generation speed of the selected LLM at 4, 6 and 8 threads. Results go to the log (tag LLM). */
+/** Measures prompt/generation speed of the selected LLM at 2, 4 and 6 threads. Results go to the log (tag LLM). */
 @Singleton
 class LlmBenchmark @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -30,7 +30,7 @@ class LlmBenchmark @Inject constructor(
             val s = prefs.current()
             val model = LlmModel.byId(s.modelId)
             if (!models.isReady(model.spec)) return@withContext "Модель ${model.spec.title} не загружена"
-            val engine = LlamaCppEngine.load(context, model, models, 8, s.contextSize, repack = !s.lowMemory)
+            val engine = LlamaCppEngine.load(context, model, models, 6, s.contextSize)
             val text = (1..12).joinToString(" ") {
                 "мы договорились с Сашей встретиться во вторник в кафе у метро и обсудить ремонт квартиры, он обещал прислать смету до пятницы"
             }
@@ -38,7 +38,7 @@ class LlmBenchmark @Inject constructor(
             val results = mutableListOf<String>()
             try {
                 engine.generate(prompt, GenOptions(maxTokens = 8, temperature = 0f)) // warm-up (page-in weights)
-                for (t in listOf(4, 6, 8)) {
+                for (t in listOf(2, 4, 6)) {
                     engine.setThreads(t)
                     val r = engine.generate(prompt, GenOptions(maxTokens = 96, temperature = 0f))
                     val line = "$t потоков: промпт ${r.promptTokens} ток. %.0f ток/с, генерация ${r.genTokens} ток. %.1f ток/с".format(r.promptTps, r.genTps)

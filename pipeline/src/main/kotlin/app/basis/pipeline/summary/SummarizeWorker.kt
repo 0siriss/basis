@@ -103,7 +103,7 @@ class SummarizeWorker @AssistedInject constructor(
                 if (engine == null) {
                     if (LlmGuard.blocked(applicationContext, model.spec.id) && !(manual && LlmGuard.consumeManualGrant(applicationContext))) {
                         val msg = "модель ${model.spec.title} ${LlmGuard.failures(applicationContext, model.spec.id)} раза завершалась вместе с процессом " +
-                            "(не хватает памяти?) — автоматические сводки остановлены. Выберите модель меньше, включите «Экономию памяти» или запустите вручную"
+                            "(не хватает памяти?) — автоматические сводки остановлены. Выберите модель меньше или запустите вручную"
                         AppLog.e(TAG, msg)
                         status.update { it.copy(last = msg) }
                         return Result.success()
@@ -116,7 +116,7 @@ class SummarizeWorker @AssistedInject constructor(
                     status.update { it.copy(running = true, step = "загрузка ${model.spec.title}") }
                     runCatching { setForeground(foregroundInfo(model.spec.title)) }
                         .onFailure { AppLog.w(TAG, "не удалось перейти в foreground (${it.javaClass.simpleName})") }
-                    engine = LlamaCppEngine.load(applicationContext, model, models, llmSettings.threads, llmSettings.contextSize, repack = !llmSettings.lowMemory)
+                    engine = LlamaCppEngine.load(applicationContext, model, models, llmSettings.threads, llmSettings.contextSize)
                 }
                 val summarizer = summarizer(engine, stats)
 

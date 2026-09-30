@@ -67,7 +67,6 @@ class LlmViewModel @Inject constructor(
     fun failures(modelId: String): Int = app.basis.ml.llm.LlmGuard.failures(appContext, modelId)
     fun resetGuard() = app.basis.ml.llm.LlmGuard.reset(appContext)
     fun setContext(n: Int) = viewModelScope.launch { prefs.setContextSize(n) }
-    fun setLowMemory(on: Boolean) = viewModelScope.launch { prefs.setLowMemory(on); app.basis.ml.llm.LlmGuard.reset(appContext) }
 
     val settings: StateFlow<LlmSettings> = prefs.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LlmSettings())
     val state: StateFlow<SummaryState> = status.state
@@ -115,26 +114,22 @@ fun LlmCard(vm: LlmViewModel = hiltViewModel()) {
                 Text(
                     "⚠ Процесс завершался во время работы этой модели ($fails раз) — вероятно, не хватает памяти. " +
                         (if (fails >= app.basis.ml.llm.LlmGuard.MAX_FAILURES) "Автоматические сводки с ней остановлены. " else "") +
-                        "Попробуйте «Экономию памяти» или модель поменьше.",
+                        "Выберите модель поменьше.",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             Text("Потоков CPU: ${settings.threads}")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(4, 6, 8).forEach { n -> FilterChip(selected = settings.threads == n, onClick = { vm.setThreads(n) }, label = { Text("$n") }) }
+                listOf(2, 4, 6).forEach { n -> FilterChip(selected = settings.threads == n, onClick = { vm.setThreads(n) }, label = { Text("$n") }) }
             }
             Text("Контекст: ${settings.contextSize} токенов")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(4096, 8192).forEach { n -> FilterChip(selected = settings.contextSize == n, onClick = { vm.setContext(n) }, label = { Text("$n") }) }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Экономия памяти (медленнее, ~вдвое меньше RAM)", Modifier.weight(1f))
-                androidx.compose.material3.Switch(checked = settings.lowMemory, onCheckedChange = vm::setLowMemory)
-            }
             val bench by vm.bench.collectAsStateWithLifecycle()
             androidx.compose.material3.OutlinedButton(onClick = vm::runBenchmark, enabled = !state.running && bench != "Идёт тест скорости…") {
-                Text("Тест скорости (4/6/8 потоков)")
+                Text("Тест скорости (2/4/6 потоков)")
             }
             bench?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             HorizontalDivider()

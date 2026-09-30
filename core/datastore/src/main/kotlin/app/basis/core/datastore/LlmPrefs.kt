@@ -21,8 +21,6 @@ data class LlmSettings(
     val threads: Int = 6,
     /** 4096 is enough for hour chunks (map-reduce) and halves KV/compute memory vs 8192. */
     val contextSize: Int = 4096,
-    /** Low-memory mode: don't repack weights (slower, but ~half the RAM). */
-    val lowMemory: Boolean = false,
 )
 
 @Singleton
@@ -31,17 +29,16 @@ class LlmPrefs @Inject constructor(@ApplicationContext private val context: Cont
         val model = stringPreferencesKey("model")
         val threads = intPreferencesKey("threads")
         val ctx = intPreferencesKey("context")
-        val lowMem = androidx.datastore.preferences.core.booleanPreferencesKey("low_memory")
     }
 
     val settings: Flow<LlmSettings> = context.llmStore.data.map { p ->
         val d = LlmSettings()
-        LlmSettings(p[Keys.model] ?: d.modelId, p[Keys.threads] ?: d.threads, p[Keys.ctx] ?: d.contextSize, p[Keys.lowMem] ?: d.lowMemory)
+        // 8 threads measured as unstable on an 8-core phone (thread barrier stalls): cap at 6.
+        LlmSettings(p[Keys.model] ?: d.modelId, (p[Keys.threads] ?: d.threads).coerceAtMost(6), p[Keys.ctx] ?: d.contextSize)
     }
 
     suspend fun current(): LlmSettings = settings.first()
     suspend fun setModel(id: String) { context.llmStore.edit { it[Keys.model] = id } }
-    suspend fun setThreads(n: Int) { context.llmStore.edit { it[Keys.threads] = n.coerceIn(1, 8) } }
+    suspend fun setThreads(n: Int) { context.llmStore.edit { it[Keys.threads] = n.coerceIn(1, 6) } }
     suspend fun setContextSize(n: Int) { context.llmStore.edit { it[Keys.ctx] = n.coerceIn(2048, 32768) } }
-    suspend fun setLowMemory(on: Boolean) { context.llmStore.edit { it[Keys.lowMem] = on } }
 }
