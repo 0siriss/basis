@@ -43,6 +43,19 @@ class ModelManager @Inject constructor(@ApplicationContext private val context: 
     private val states = ModelCatalog.all.associate { it.id to MutableStateFlow(initialState(it)) }
     private val jobs = mutableMapOf<String, Job>()
 
+    init {
+        scope.launch { removeOrphans() }
+    }
+
+    /** Deletes directories of models that were dropped from the catalog (e.g. comparison-only LLMs). */
+    private fun removeOrphans() {
+        val known = ModelCatalog.all.map { it.id }.toSet()
+        root.listFiles()?.filter { it.isDirectory && !it.name.startsWith(".") && it.name !in known }?.forEach { d ->
+            val size = dirSize(d)
+            if (d.deleteRecursively()) AppLog.i(TAG, "удалена устаревшая модель ${d.name} (${size / 1_000_000} МБ)")
+        }
+    }
+
     fun state(spec: ModelSpec): StateFlow<ModelState> = states.getValue(spec.id).asStateFlow()
 
     fun isReady(spec: ModelSpec): Boolean = state(spec).value == ModelState.Ready

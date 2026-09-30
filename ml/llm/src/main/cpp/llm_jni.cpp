@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <sched.h>
 #include <chrono>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -274,4 +275,74 @@ Java_app_basis_ml_llm_LlamaNative_nativeFree(JNIEnv *, jobject, jlong handle) {
     if (h->ctx) llama_free(h->ctx);
     if (h->model) llama_model_free(h->model);
     delete h;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Embeddings (BGE-M3 / e5 …): separate context with embeddings=true and the model's pooling.
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_basis_ml_llm_LlamaNative_nativeEmbedLoad(JNIEnv *env, jobject, jstring path, jint nCtx, jint nThreads) {
+    std::string p = to_std(env, path);
+    llama_model_params mp = llama_model_default_params();
+    mp.n_gpu_layers = 0;
+    mp.use_extra_bufts = true;
+    mp.load_mode = LLAMA_LOAD_MODE_NONE;
+    llama_model *model = llama_model_load_from_file(p.c_str(), mp);
+    if (!model) {
+        LOGE("failed to load embedding model %s", p.c_str());
+        return 0;
+    }
+    llama_context_params cp = llama_context_default_params();
+    cp.embeddings = true;
+    cp.n_ctx = (uint32_t) nCtx;
+    cp.n_batch = (uint32_t) nCtx;   // non-causal models need the whole input in one ubatch
+    cp.n_ubatch = (uint32_t) nCtx;
+    cp.n_threads = nThreads;
+    cp.n_threads_batch = nThreads;
+    cp.no_perf = true;
+    llama_context *ctx = llama_init_from_model(model, cp);
+    if (!ctx) {
+        LOGE("failed to create embedding context");
+        llama_model_free(model);
+        return 0;
+    }
+    auto *h = new LlmHandle();
+    h->model = model;
+    h->ctx = ctx;
+    h->vocab = llama_model_get_vocab(model);
+    LOGI("embedding model loaded: n_embd=%d pooling=%d", llama_model_n_embd(model), (int) llama_pooling_type(ctx));
+    return reinterpret_cast<jlong>(h);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_app_basis_ml_llm_LlamaNative_nativeEmbedDim(JNIEnv *, jobject, jlong handle) {
+    return llama_model_n_embd(reinterpret_cast<LlmHandle *>(handle)->model);
+}
+
+/** L2-normalized sentence embedding of UTF-8 text (truncated to the context), or null on error. */
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_app_basis_ml_llm_LlamaNative_nativeEmbed(JNIEnv *env, jobject, jlong handle, jbyteArray text) {
+    auto *h = reinterpret_cast<LlmHandle *>(handle);
+    std::vector<llama_token> tokens = tokenize(h->vocab, bytes_to_std(env, text), true);
+    const int n_ctx = (int) llama_n_ctx(h->ctx);
+    if (tokens.empty()) return nullptr;
+    if ((int) tokens.size() > n_ctx) tokens.resize(n_ctx);
+    llama_memory_t mem = llama_get_memory(h->ctx);
+    if (mem) llama_memory_clear(mem, true);
+    if (llama_decode(h->ctx, llama_batch_get_one(tokens.data(), (int32_t) tokens.size())) < 0) {
+        LOGE("embedding decode failed");
+        return nullptr;
+    }
+    const int n_embd = llama_model_n_embd(h->model);
+    const float *e = llama_get_embeddings_seq(h->ctx, 0);
+    if (!e) e = llama_get_embeddings(h->ctx);
+    if (!e) return nullptr;
+    double norm = 0;
+    for (int i = 0; i < n_embd; i++) norm += (double) e[i] * e[i];
+    norm = norm > 0 ? std::sqrt(norm) : 1.0;
+    std::vector<float> out(n_embd);
+    for (int i = 0; i < n_embd; i++) out[i] = (float) (e[i] / norm);
+    jfloatArray arr = env->NewFloatArray(n_embd);
+    env->SetFloatArrayRegion(arr, 0, n_embd, out.data());
+    return arr;
 }

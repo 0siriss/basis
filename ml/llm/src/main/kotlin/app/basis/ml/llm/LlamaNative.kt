@@ -28,4 +28,8 @@ internal object LlamaNative {
     ): ByteArray?
     external fun nativeLastStats(handle: Long): LongArray
     external fun nativeFree(handle: Long)
+
+    external fun nativeEmbedLoad(path: String, nCtx: Int, nThreads: Int): Long
+    external fun nativeEmbedDim(handle: Long): Int
+    external fun nativeEmbed(handle: Long, text: ByteArray): FloatArray?
 }

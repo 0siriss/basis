@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import app.basis.feature.chat.ChatScreen
 import app.basis.feature.home.HomeScreen
 import app.basis.feature.logs.LogsScreen
 import app.basis.feature.timeline.TimelineScreen
@@ -27,7 +28,10 @@ class MainActivity : ComponentActivity() {
             BasisTheme {
                 val nav = rememberNavController()
                 NavHost(nav, startDestination = "home") {
-                    composable("home") { HomeScreen(onOpenLogs = { nav.navigate("logs") }, onOpenTranscripts = { nav.navigate("transcripts") }) }
+                    composable("home") {
+                        HomeScreen(onOpenLogs = { nav.navigate("logs") }, onOpenTranscripts = { nav.navigate("transcripts") }, onOpenChat = { nav.navigate("chat") })
+                    }
+                    composable("chat") { ChatScreen(onBack = { nav.popBackStack() }) }
                     composable("transcripts") { TimelineScreen(onBack = { nav.popBackStack() }) }
                     composable("logs") { LogsScreen(onBack = { nav.popBackStack() }) }
                 }

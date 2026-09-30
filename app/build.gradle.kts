@@ -15,7 +15,7 @@ android {
         targetSdk = 37
         // CI run number → monotonically increasing, so every artifact installs over the previous one.
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.4.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}-stage4"
+        versionName = "0.5.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}-stage5"
     }
 
     signingConfigs {
@@ -69,6 +69,7 @@ dependencies {
     implementation(project(":feature:home"))
     implementation(project(":feature:logs"))
     implementation(project(":feature:timeline"))
+    implementation(project(":feature:chat"))
     implementation(project(":pipeline"))
     implementation(project(":ml:models"))
 

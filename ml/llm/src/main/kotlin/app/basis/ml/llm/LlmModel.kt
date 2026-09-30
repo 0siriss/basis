@@ -6,10 +6,8 @@ import app.basis.ml.models.ModelSpec
 /** LLMs the user can pick for summaries and chat. */
 enum class LlmModel(val spec: ModelSpec, val format: PromptFormat) {
     QWEN35_4B(ModelCatalog.QWEN35_4B, PromptFormat.QWEN_CHATML_NO_THINK),
-    QWEN35_4B_Q40(ModelCatalog.QWEN35_4B_Q40, PromptFormat.QWEN_CHATML_NO_THINK),
     QWEN35_2B(ModelCatalog.QWEN35_2B, PromptFormat.QWEN_CHATML_NO_THINK),
     QWEN35_08B(ModelCatalog.QWEN35_08B, PromptFormat.QWEN_CHATML_NO_THINK),
-    QWEN3_4B_2507(ModelCatalog.QWEN3_4B_2507, PromptFormat.QWEN_CHATML),
     ;
 
     companion object {

@@ -25,7 +25,8 @@ import javax.inject.Inject
  * Debug builds only; lets CI drive the app via `am start -n …/app.basis.DebugCommandActivity --es cmd …`.
  * cmd = start | pause | resume | stop | private:<min> | download-models | download:<model id> |
  *       inject-wav:<path> (16 kHz mono PCM16 WAV → encrypted buffer) | transcribe | dump-transcripts |
- *       llm:<model id> | llm-threads:<n> | summarize | dump-summaries
+ *       llm:<model id> | llm-threads:<n> | summarize | dump-summaries |
+ *       index | dump-index | ask:<question, "_" for spaces>
  */
 @AndroidEntryPoint
 class DebugCommandActivity : ComponentActivity() {
@@ -36,6 +37,8 @@ class DebugCommandActivity : ComponentActivity() {
     @Inject lateinit var dao: TranscriptDao
     @Inject lateinit var summaries: app.basis.core.database.SummaryDao
     @Inject lateinit var llmPrefs: app.basis.core.datastore.LlmPrefs
+    @Inject lateinit var chunks: app.basis.core.database.ChunkDao
+    @Inject lateinit var chat: app.basis.pipeline.search.DiaryChat
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +66,29 @@ class DebugCommandActivity : ComponentActivity() {
                     cmd == "dump-transcripts" -> withContext(Dispatchers.IO) {
                         val today = java.time.LocalDate.now().toString()
                         dao.byDay(today).takeLast(5).forEach { AppLog.i("Debug", "расшифровка [${it.model}]: ${it.text}") }
+                    }
+                    cmd == "index" -> scheduler.enqueueIndex(manual = true)
+                    cmd == "dump-index" -> withContext(Dispatchers.IO) {
+                        val today = java.time.LocalDate.now().toString()
+                        val ids = chunks.headersByDay(today).map { it.id }
+                        chunks.byIds(ids).forEach {
+                            AppLog.i("Debug", "индекс ${it.kind} вектор=${it.vector?.size ?: 0}Б: ${it.text.take(200)}")
+                        }
+                    }
+                    cmd.startsWith("ask:") -> {
+                        val q = cmd.substringAfter(':').replace('_', ' ')
+                        val answer = StringBuilder()
+                        chat.ask(q).collect { e ->
+                            when (e) {
+                                is app.basis.pipeline.search.ChatEvent.Token -> answer.append(e.text)
+                                is app.basis.pipeline.search.ChatEvent.Sources ->
+                                    e.sources.forEach { AppLog.i("Debug", "источник [${it.n}] ${it.label}") }
+                                is app.basis.pipeline.search.ChatEvent.Error -> AppLog.e("Debug", "чат: ${e.message}")
+                                is app.basis.pipeline.search.ChatEvent.Done -> AppLog.i("Debug", "ответ: ${answer.toString().trim()}")
+                                is app.basis.pipeline.search.ChatEvent.Status -> AppLog.d("Debug", e.text)
+                            }
+                        }
+                        chat.release()
                     }
                     else -> AppLog.w("Debug", "неизвестная команда")
                 }

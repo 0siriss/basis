@@ -70,10 +70,28 @@ class TranscriptionScheduler @Inject constructor(
         wm.enqueueUniqueWork(SUMMARY_NOW, ExistingWorkPolicy.KEEP, req)
     }
 
+    /** Updates the search index (after summaries); manual = embed now regardless of charging. */
+    fun enqueueIndex(manual: Boolean = false) {
+        val req = OneTimeWorkRequestBuilder<app.basis.pipeline.search.IndexWorker>()
+            .setInputData(workDataOf(app.basis.pipeline.search.IndexWorker.KEY_MANUAL to manual))
+            .build()
+        wm.enqueueUniqueWork(if (manual) INDEX_NOW else INDEX, ExistingWorkPolicy.KEEP, req)
+    }
+
+    /**
+     * Stops LLM/embedding work so the chat can load its models without two LLMs in memory at once.
+     * They are re-enqueued after the next recognition run.
+     */
+    fun cancelHeavyWork() {
+        listOf(SUMMARY, SUMMARY_NOW, INDEX, INDEX_NOW).forEach { wm.cancelUniqueWork(it) }
+    }
+
     private companion object {
         const val PERIODIC = "transcribe-periodic"
         const val NOW = "transcribe-now"
         const val SUMMARY = "summarize"
         const val SUMMARY_NOW = "summarize-now"
+        const val INDEX = "index"
+        const val INDEX_NOW = "index-now"
     }
 }

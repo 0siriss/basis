@@ -36,4 +36,5 @@ include(
     ":feature:home",
     ":feature:logs",
     ":feature:timeline",
+    ":feature:chat",
 )

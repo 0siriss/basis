@@ -52,6 +52,9 @@ interface SummaryDao {
     @Query("SELECT day, COUNT(*) AS count, MAX(created_ms) AS max_created_ms FROM transcripts GROUP BY day ORDER BY day")
     suspend fun transcriptDayStats(): List<DayStat>
 
+    @Query("SELECT day, COUNT(*) AS count, MAX(created_ms) AS max_created_ms FROM summaries GROUP BY day ORDER BY day")
+    suspend fun summaryDayStats(): List<DayStat>
+
     @Query("DELETE FROM summaries WHERE day = :day AND kind = 'HOUR' AND period_start_ms NOT IN (:keep)")
     suspend fun deleteStaleHours(day: String, keep: List<Long>)
 }

@@ -1,9 +1,6 @@
 package app.basis.pipeline.summary
 
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.BatteryManager
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -14,7 +11,6 @@ import app.basis.core.database.SummaryEntity
 import app.basis.core.database.TranscriptDao
 import app.basis.core.datastore.AsrPrefs
 import app.basis.core.datastore.LlmPrefs
-import app.basis.core.datastore.ProcessingMode
 import app.basis.ml.llm.ChatPrompt
 import app.basis.ml.llm.GenOptions
 import app.basis.ml.llm.LlamaCppEngine
@@ -23,7 +19,9 @@ import app.basis.ml.llm.LlmEngine
 import app.basis.ml.llm.LlmModel
 import app.basis.ml.models.ModelManager
 import app.basis.pipeline.CurrentMeter
+import app.basis.pipeline.TranscriptionScheduler
 import app.basis.pipeline.TranscriptionStatus
+import app.basis.pipeline.heavyWorkAllowed
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +47,7 @@ class SummarizeWorker @AssistedInject constructor(
     private val asrPrefs: AsrPrefs,
     private val lockHolder: TranscriptionStatus,
     private val status: SummaryStatus,
+    private val scheduler: TranscriptionScheduler,
 ) : CoroutineWorker(context, params) {
 
     private class Stats {
@@ -66,6 +65,8 @@ class SummarizeWorker @AssistedInject constructor(
         } finally {
             lockHolder.lock.unlock()
             status.update { it.copy(running = false, step = "") }
+            // New/changed digests and transcripts → search index.
+            scheduler.enqueueIndex(manual)
         }
     }
 
@@ -196,14 +197,7 @@ class SummarizeWorker @AssistedInject constructor(
         return Summarizer(llm, budget, maxOut)
     }
 
-    private suspend fun allowed(): Boolean {
-        val s = asrPrefs.current()
-        val bm = applicationContext.getSystemService(BatteryManager::class.java)
-        val sticky = applicationContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val charging = (sticky?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0 || bm.isCharging
-        val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return charging || (s.mode == ProcessingMode.CHARGING_OR_BATTERY_ABOVE && level >= s.batteryThreshold)
-    }
+    private suspend fun allowed(): Boolean = heavyWorkAllowed(applicationContext, asrPrefs)
 
     private fun foregroundInfo(title: String): androidx.work.ForegroundInfo {
         val nm = applicationContext.getSystemService(android.app.NotificationManager::class.java)

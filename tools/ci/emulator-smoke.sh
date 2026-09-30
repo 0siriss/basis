@@ -60,12 +60,22 @@ if [ -f build/asr/example.wav ]; then
   cmd dump-transcripts; sleep 2
   step "LLM summary: Qwen3.5 0.8B over the transcript"
   cmd download:qwen3.5-0.8b-q4km
+  cmd download:bge-m3-q8
   if wait_log "Qwen3.5 0.8B.*: готова" 300; then echo "llm ready" | tee -a "$OUT/steps.txt"; else echo "llm NOT ready" | tee -a "$OUT/steps.txt"; fi
   cmd llm:qwen3.5-0.8b-q4km; cmd llm-threads:2; sleep 1
   cmd summarize
   if wait_log "Basis/Summary.*сводки:" 900; then echo "summarized" | tee -a "$OUT/steps.txt"; else echo "NOT summarized" | tee -a "$OUT/steps.txt"; fi
   cmd dump-summaries; sleep 2
   adb logcat -d | grep -E "BasisLlm|Basis/LLM|Basis/Summary" | cut -c1-400 | tail -30 | tee -a "$OUT/steps.txt"
+  step "Search index (BGE-M3) and a question to the diary"
+  if wait_log "BGE-M3.*: готова" 300; then echo "embedder ready" | tee -a "$OUT/steps.txt"; else echo "embedder NOT ready" | tee -a "$OUT/steps.txt"; fi
+  cmd index
+  if wait_log "Basis/Index.*эмбеддинги:" 600; then echo "indexed" | tee -a "$OUT/steps.txt"; else echo "NOT indexed" | tee -a "$OUT/steps.txt"; fi
+  cmd dump-index; sleep 2
+  # adb shell joins arguments into one string: spaces are passed as "_".
+  cmd "ask:о_чём_говорили_сегодня?"
+  if wait_log "Basis/Chat.*чат:" 900; then echo "answered" | tee -a "$OUT/steps.txt"; else echo "NOT answered" | tee -a "$OUT/steps.txt"; fi
+  adb logcat -d | grep -E "Basis/Index|Basis/Embed|Basis/Search|Basis/Chat|Basis/Debug.*(ответ|индекс|источник)" | cut -c1-400 | tail -30 | tee -a "$OUT/steps.txt"
   echo "audio files left in app storage:" | tee -a "$OUT/steps.txt"
   adb shell run-as $PKG find . -name '*.bseg*' -o -name '*.wav' -o -name '*.pcm' 2>&1 | tee -a "$OUT/steps.txt"
 fi

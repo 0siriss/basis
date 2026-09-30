@@ -151,19 +151,27 @@ object ModelCatalog {
         "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517", 532_517_120,
     )
 
-    /** Q4_0: the format best served by the ARM-optimized kernels (KleidiAI/repack) — possibly faster prompt processing. */
-    val QWEN35_4B_Q40 = gguf(
-        "qwen3.5-4b-q40", "Qwen3.5 4B (Q4_0, быстрые ARM-ядра)", "unsloth/Qwen3.5-4B-GGUF", "Qwen3.5-4B-Q4_0.gguf",
-        "298fcb5fe7a77ccc79745ae24751560c5ac56874caff4bb39b1f2055bd72b8bb", 2_583_221_408,
+    /**
+     * BGE-M3 (BAAI, MIT): multilingual embeddings (Russian + English in one space), 1024-dim, up to
+     * 8192 tokens. Q8_0 GGUF published by ggml-org; runs on the same llama.cpp runtime as the LLM.
+     */
+    val BGE_M3 = ModelSpec(
+        id = "bge-m3-q8",
+        title = "BGE-M3 (поиск по смыслу)",
+        role = ModelRole.EMBEDDING,
+        license = "MIT",
+        source = "BAAI/bge-m3, GGUF: huggingface.co/ggml-org/bge-m3-Q8_0-GGUF",
+        files = listOf(
+            ModelFile(
+                name = "bge-m3-q8_0.gguf",
+                url = "$HF/ggml-org/bge-m3-Q8_0-GGUF/resolve/main/bge-m3-q8_0.gguf",
+                sha256 = "aa473d51f451a22f0fcf39ba3330c14bed38a385712b1113440f69df4047a173",
+                sizeBytes = 634_553_760,
+            ),
+        ),
     )
 
-    /** Classic transformer (no hybrid DeltaNet layers): well-optimized CPU kernels in llama.cpp. */
-    val QWEN3_4B_2507 = gguf(
-        "qwen3-4b-2507-q4km", "Qwen3 4B Instruct 2507 (Q4_K_M)", "unsloth/Qwen3-4B-Instruct-2507-GGUF", "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
-        "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597", 2_497_281_120,
-    )
-
-    val all: List<ModelSpec> = listOf(SILERO_VAD, GIGAAM_V3, WHISPER_BASE, WHISPER_SMALL, WHISPER_TURBO, QWEN35_4B, QWEN35_4B_Q40, QWEN35_2B, QWEN35_08B, QWEN3_4B_2507)
+    val all: List<ModelSpec> = listOf(SILERO_VAD, GIGAAM_V3, WHISPER_BASE, WHISPER_SMALL, WHISPER_TURBO, QWEN35_4B, QWEN35_2B, QWEN35_08B, BGE_M3)
 
     fun byId(id: String): ModelSpec? = all.firstOrNull { it.id == id }
 

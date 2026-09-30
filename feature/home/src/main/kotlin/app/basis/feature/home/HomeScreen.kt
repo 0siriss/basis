@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -64,7 +65,7 @@ private val HM = DateTimeFormatter.ofPattern("HH:mm")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onOpenLogs: () -> Unit, onOpenTranscripts: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onOpenLogs: () -> Unit, onOpenTranscripts: () -> Unit, onOpenChat: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
     val status by vm.status.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -102,6 +103,7 @@ fun HomeScreen(onOpenLogs: () -> Unit, onOpenTranscripts: () -> Unit, vm: HomeVi
             TopAppBar(
                 title = { Text("Ежедневник") },
                 actions = {
+                    IconButton(onClick = onOpenChat) { Icon(Icons.Filled.Search, contentDescription = "Спросить дневник") }
                     IconButton(onClick = onOpenTranscripts) { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Дневник") }
                     IconButton(onClick = onOpenLogs) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Логи") }
                 },
@@ -169,6 +171,7 @@ fun HomeScreen(onOpenLogs: () -> Unit, onOpenTranscripts: () -> Unit, vm: HomeVi
             SpeechCards()
             AsrCard()
             LlmCard()
+            SearchCard(onOpenChat)
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
