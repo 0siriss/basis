@@ -6,10 +6,7 @@ def get(url):
     with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "basis-ci"}), timeout=60) as r:
         return json.load(r)
 
-SEARCHES = [
-    "Qwen3.5-4B GGUF", "Qwen3.5-2B GGUF", "Qwen3.5 GGUF", "gemma-4 E4B GGUF", "gemma-4 GGUF",
-    "Qwen3-4B-Instruct-2507 GGUF", "multilingual-e5-small gguf", "multilingual-e5-small onnx",
-]
+SEARCHES = ["Qwen3.5-4B GGUF", "Qwen3.5-2B GGUF", "multilingual-e5-small gguf", "multilingual-e5-base gguf", "bge-m3 gguf"]
 PREFERRED_AUTHORS = ("Qwen", "ggml-org", "unsloth", "bartowski", "google", "intfloat", "lmstudio-community")
 seen = set()
 for q in SEARCHES:
@@ -31,7 +28,7 @@ for q in SEARCHES:
             p = f.get("path", "")
             if not (p.endswith(".gguf") or p.endswith(".onnx") or p.endswith("tokenizer.json")):
                 continue
-            if p.endswith(".gguf") and not any(k in p for k in ("Q4_K_M", "Q8_0", "q4_k_m", "q8_0", "f16", "F16")):
+            if p.endswith(".gguf") and not any(k in p.upper() for k in ("Q4_0", "Q4_K_M", "Q8_0", "F16", "IQ4_NL")):
                 continue
             lfs = f.get("lfs") or {}
             print(f"   {mid} | {p} | {f.get('size')} | {lfs.get('oid', '-')}")
