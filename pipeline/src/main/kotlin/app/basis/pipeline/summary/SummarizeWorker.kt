@@ -129,7 +129,13 @@ class SummarizeWorker @AssistedInject constructor(
                     status.update { it.copy(step = "час $label") }
                     val before = stats.calls
                     val ts = System.currentTimeMillis()
-                    val digest = summarizer.summarizePeriod(label, lines)
+                    val digest = try {
+                        summarizer.summarizePeriod(label, lines)
+                    } catch (e: org.json.JSONException) {
+                        // Stored empty so the hour is not retried until new speech arrives; the transcript stays.
+                        AppLog.w(TAG, "сводка за $label: модель вернула неразборчивый ответ — час пропущен")
+                        Digest()
+                    }
                     val took = System.currentTimeMillis() - ts
                     summaries.upsert(
                         SummaryEntity(ds.day, h.hourStartMs, SummaryEntity.HOUR, digest.toJson(), model.spec.id, h.count, h.maxCreatedMs, System.currentTimeMillis(), took),
@@ -142,7 +148,13 @@ class SummarizeWorker @AssistedInject constructor(
                         .map { hourLabel(it.periodStartMs, zone) to Digest.parse(it.json) }
                     status.update { it.copy(step = "итог дня ${ds.day}") }
                     val ts = System.currentTimeMillis()
-                    val digest = summarizer.summarizeDay(dayLabel(day), hourDigests)
+                    val digest = try {
+                        summarizer.summarizeDay(dayLabel(day), hourDigests)
+                    } catch (e: org.json.JSONException) {
+                        // Deterministic failure (same input → same output): retrying only burns battery.
+                        AppLog.w(TAG, "итог дня ${ds.day}: модель вернула неразборчивый ответ — итог собран из часовых сводок без LLM")
+                        summarizer.fallbackDay(hourDigests)
+                    }
                     val took = System.currentTimeMillis() - ts
                     summaries.upsert(
                         SummaryEntity(ds.day, 0, SummaryEntity.DAY, digest.toJson(), model.spec.id, plan.dayCount, plan.dayMaxCreatedMs, System.currentTimeMillis(), took),
@@ -153,9 +165,12 @@ class SummarizeWorker @AssistedInject constructor(
                 summaries.deleteStaleHours(ds.day, plan.allHours.map { it.hourStartMs })
             }
         } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
             AppLog.e(TAG, "сбой при построении сводок", t)
             status.update { it.copy(last = "Сбой: ${t.message}") }
-            return Result.retry()
+            // A manual run must not come back by itself (it ignores the battery rule); automatic runs get
+            // a few retries for transient failures, then wait for the next recognition run.
+            return if (!manual && runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
         } finally {
             engine?.close()
             meter.stop()
@@ -180,8 +195,9 @@ class SummarizeWorker @AssistedInject constructor(
 
     private fun summarizer(engine: LlmEngine, stats: Stats): Summarizer {
         val maxOut = 700
+        val dayOut = 1400
         val overhead = engine.countTokens(Prompts.SYSTEM) + 400 // instructions + chat markup
-        val budget = (engine.contextSize - maxOut - overhead).coerceAtLeast(512)
+        val budget = (engine.contextSize - dayOut - overhead).coerceAtLeast(512)
         val llm = object : TextLlm {
             override fun countTokens(text: String) = engine.countTokens(text)
             override fun complete(system: String, user: String, grammar: String, maxTokens: Int): String {
@@ -194,7 +210,7 @@ class SummarizeWorker @AssistedInject constructor(
                 return r.text
             }
         }
-        return Summarizer(llm, budget, maxOut)
+        return Summarizer(llm, budget, maxOut, dayOut)
     }
 
     private suspend fun allowed(): Boolean = heavyWorkAllowed(applicationContext, asrPrefs)
@@ -222,6 +238,7 @@ class SummarizeWorker @AssistedInject constructor(
     companion object {
         const val KEY_MANUAL = "manual"
         private const val TAG = "Summary"
+        private const val MAX_ATTEMPTS = 3
         private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
         private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.forLanguageTag("ru"))
     }

@@ -22,6 +22,8 @@ class Summarizer(
     /** Tokens available for the variable part of the prompt (context − instructions − output). */
     private val inputBudget: Int,
     private val maxOutputTokens: Int = 700,
+    /** The day digest merges many hours: more room, or the answer is cut mid-JSON (measured: 700 was not enough). */
+    private val dayOutputTokens: Int = maxOutputTokens * 2,
     private val onCall: (kind: String) -> Unit = {},
 ) {
     private val chunker = Chunker(llm::countTokens, inputBudget)
@@ -35,6 +37,23 @@ class Summarizer(
             Digest.parse(llm.complete(Prompts.SYSTEM, Prompts.transcript(label, chunk), Digest.GRAMMAR, maxOutputTokens))
         }
         return reduce(periodLabel, parts, day = false)
+    }
+
+    /**
+     * Day digest without the LLM: hour summaries in order and merged lists. Used when the model fails on
+     * the day, so the diary still gets a day entry instead of retrying (and draining the battery) forever.
+     */
+    fun fallbackDay(hours: List<Pair<String, Digest>>): Digest {
+        val nonEmpty = hours.filterNot { it.second.isEmpty }
+        fun merged(f: (Digest) -> List<String>) = nonEmpty.flatMap { f(it.second) }.distinct().take(10)
+        return Digest(
+            summary = nonEmpty.filter { it.second.summary.isNotBlank() }.joinToString(" ") { "${it.first.substringBefore(',')}: ${it.second.summary}" },
+            events = merged { it.events },
+            agreements = merged { it.agreements },
+            tasks = merged { it.tasks },
+            ideas = merged { it.ideas },
+            mood = nonEmpty.map { it.second.mood }.filter(String::isNotBlank).distinct().take(3).joinToString(", "),
+        )
     }
 
     fun summarizeDay(dayLabel: String, hours: List<Pair<String, Digest>>): Digest {
@@ -57,7 +76,7 @@ class Summarizer(
         val groups = chunker.chunk(items)
         if (groups.size == 1) {
             onCall(if (day) "day" else "reduce")
-            return Digest.parse(llm.complete(Prompts.SYSTEM, Prompts.merge(label, groups.single(), day), Digest.GRAMMAR, maxOutputTokens))
+            return Digest.parse(llm.complete(Prompts.SYSTEM, Prompts.merge(label, groups.single(), day), Digest.GRAMMAR, if (day) dayOutputTokens else maxOutputTokens))
         }
         val merged = groups.mapIndexed { i, g ->
             onCall("reduce")
@@ -85,6 +104,7 @@ object Prompts {
         tasks — задачи и дела, которые нужно сделать;
         ideas — идеи и мысли, которые стоит запомнить;
         mood — настроение и тон одним-тремя словами.
+        В каждом списке не больше 7 пунктов, каждый пункт — одна короткая фраза.
     """.trimIndent()
 
     fun transcript(label: String, lines: List<String>) =
